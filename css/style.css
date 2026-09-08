@@ -154,9 +154,10 @@ textarea{width:100%;min-height:160px;margin-top:12px;padding:12px;border-radius:
 .sub{color:var(--muted);font-size:14px;max-width:28ch;line-height:1.45;}
 
 /* ---------- salon ---------- */
-.roomcode{text-align:center;}
-.roomcode .code{font-family:var(--mono);font-size:clamp(44px,14vw,64px);letter-spacing:.3em;padding-left:.3em;color:var(--accent-soft);font-weight:700;margin:4px 0 4px;line-height:1;}
-.roomcode .hint{max-width:34ch;margin:8px auto 0;}
+.codeline{display:flex;align-items:center;gap:8px;}
+.codeline .code{flex:1;min-width:0;font-family:var(--mono);font-size:24px;font-weight:700;letter-spacing:.28em;padding:11px 14px 11px calc(14px + .28em);
+  border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--border);color:var(--accent-soft);text-align:center;
+  -webkit-user-select:all;user-select:all;}
 .members{list-style:none;margin:0;padding:0;}
 .members li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:15px;}
 .members li:last-child{border-bottom:0;}

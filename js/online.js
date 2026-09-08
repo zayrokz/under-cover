@@ -443,6 +443,27 @@
     $("mycard-force").addEventListener("click", function(){ hostDo(function(){ Engine.continueGame(full); }); });
     $("lobby-start").addEventListener("click", startGame);
     $("lobby-leave").addEventListener("click", leave);
+    $("lobby-copy").addEventListener("click", function(){
+      var btn = this, txt = code || "";
+      if (!txt) return;
+      var done = function(){ btn.textContent = "Copié"; setTimeout(function(){ btn.textContent = "Copier"; }, 1600); };
+      /* Repli si le presse-papier est refusé : on sélectionne le code pour une copie manuelle. */
+      var fallback = function(){
+        var selected = false;
+        try {
+          var r = document.createRange();
+          r.selectNodeContents($("lobby-code"));
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+          selected = true;
+          if (document.execCommand("copy")){ done(); return; }
+        } catch(e){}
+        UI.snack(selected ? "Le code est sélectionné : copiez-le à la main." : "Copie impossible, recopiez le code : " + txt, 3200);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done, fallback); return; }
+      } catch(e){}
+      fallback();
+    });
   }
 
   /* ---------- gestes de partie ---------- */
