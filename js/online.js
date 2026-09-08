@@ -292,19 +292,25 @@
     full = Engine.createGame({ players:players, config:config, draw:draw });
     full.ready = {}; full.scored = false;
     fullLoaded = true;
-    var privMap = {};
-    players.forEach(function(p){ privMap[p.id] = Engine.privateView(full, p.id); });
+    /* Les règles n'autorisent l'écriture que sous private/<joueur>, jamais sur le nœud private entier :
+       chaque carte est donc écrite à son propre chemin dans une seule mise à jour multi-chemins. */
     var updates = { full: full, game: Engine.publicView(full), actions: null,
       "meta/status": "playing", "meta/manche": ((meta && meta.manche) || 0) + 1 };
-    players.forEach(function(p){ if (!scores[p.id]) updates["scores/" + p.id] = { name:p.name, pts:0 }; });
+    players.forEach(function(p){
+      updates["private/" + p.id] = Engine.privateView(full, p.id);
+      if (!scores[p.id]) updates["scores/" + p.id] = { name:p.name, pts:0 };
+    });
     showingCard = false; cardSeen = false;
-    roomRef.child("private").set(privMap).then(function(){ return roomRef.update(updates); })
+    UI.toast("lobby-toast", "");
+    roomRef.update(updates)
       .catch(function(e){ UI.toast("lobby-toast", "Lancement refusé : " + (e.code || e.message)); });
   }
   function toLobby(){
+    var updates = { "meta/status":"lobby", full:null, game:null, actions:null };
+    /* suppression carte par carte : le nœud private entier n'est pas inscriptible */
+    ((full && full.players) || []).forEach(function(p){ updates["private/" + p.id] = null; });
     full = null;
-    roomRef.update({ "meta/status":"lobby", full:null, game:null, private:null, actions:null })
-      .catch(function(e){ console.error(e); });
+    roomRef.update(updates).catch(function(e){ console.error(e); });
   }
 
   /* ---------- actions côté joueur ---------- */
