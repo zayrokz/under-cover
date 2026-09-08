@@ -2,7 +2,6 @@
    TIRAGE DES MOTS — sélection d'une paire dans la banque (js/words.js)
    =====================================================================
    selection = {
-     customWords: bool, custom:[motCivils, motUndercover],
      mode: "solo" | "mix" | "theme",
      serieId: "random" | id, themeId: "random" | id
    }
@@ -28,7 +27,6 @@
   }
 
   function poolSize(sel, diff){
-    if (sel.customWords) return 1;
     if (sel.mode === "mix") return eligibleCross(diff).length;
     var list = activeList(sel), cur = activeId(sel);
     if (cur === "random"){
@@ -40,7 +38,6 @@
 
   function describe(sel, diff){
     var n = poolSize(sel, diff);
-    if (sel.customWords) return "Mots saisis à la main.";
     if (sel.mode === "mix"){
       return n + " duos croisés sur " + W.SERIES.length + " séries. Chaque carte indique son propre univers, ce qui ne trahit rien : les deux camps n'ont pas la même origine.";
     }
@@ -59,10 +56,6 @@
   function draw(sel, diff, rng){
     rng = rng || Math.random;
     var out;
-    if (sel.customWords){
-      out = { words:[sel.custom[0], sel.custom[1]], unis:[null,null], uniLabel:"Catégorie" };
-      return out;
-    }
     if (sel.mode === "mix"){
       var pool0 = eligibleCross(diff);
       var x = pool0[Math.floor(rng()*pool0.length)];

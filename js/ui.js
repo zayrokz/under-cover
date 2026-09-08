@@ -20,10 +20,10 @@
   "use strict";
 
   function $(id){ return document.getElementById(id); }
-  var SCREENS = ["screen-home","screen-setup","screen-lobby","screen-deal","screen-card","screen-play","screen-end","screen-settings","screen-editor"];
-  var BACK_SCREENS = { "screen-setup":true, "screen-settings":true, "screen-editor":true };
+  var SCREENS = ["screen-home","screen-setup","screen-lobby","screen-deal","screen-card","screen-play","screen-end","screen-settings"];
+  var BACK_SCREENS = { "screen-setup":true, "screen-settings":true };
   var CONTEXT = { "screen-setup":"Nouvelle partie", "screen-lobby":"Salon", "screen-deal":"Distribution", "screen-card":"Votre carte",
-    "screen-play":"Partie", "screen-end":"Fin de partie", "screen-settings":"Paramètres", "screen-editor":"Mots" };
+    "screen-play":"Partie", "screen-end":"Fin de partie", "screen-settings":"Paramètres" };
   var current = null;
   function show(id){
     for (var i=0;i<SCREENS.length;i++){ $(SCREENS[i]).hidden = (SCREENS[i] !== id); }

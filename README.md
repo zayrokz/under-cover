@@ -83,7 +83,7 @@ Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « 
 
 | Fichier | Rôle |
 | --- | --- |
-| `index.html` | Tous les écrans (accueil, configuration, salon, cartes, partie, fin, paramètres, éditeur) |
+| `index.html` | Tous les écrans (accueil, configuration, salon, cartes, partie, fin, paramètres) |
 | `css/style.css` | Thème sombre/clair, mise en page mobile et bureau (deux colonnes à partir de 960 px) |
 | `js/words.js` | **Banque de mots** : 472 paires « Tout public » étiquetées par niveau, 19 séries d'anime, 169 duos croisés, 4 thèmes |
 | `js/wordbank.js` | Tirage d'une paire selon la sélection et la difficulté |
@@ -91,7 +91,7 @@ Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « 
 | `js/ui.js` | Rendu partagé des écrans de partie |
 | `js/local.js` | Contrôleur « un seul téléphone » |
 | `js/online.js` | Contrôleur Firebase (salon, présence, migration d'hôte, file d'actions) |
-| `js/app.js` | Accueil, configuration, paramètres, éditeur de duos, câblage des boutons |
+| `js/app.js` | Accueil, configuration, paramètres, câblage des boutons |
 | `js/store.js` | Accès à localStorage |
 | `firebase-config.js` | Clés Firebase (à remplir) |
 | `database.rules.json` | Règles de sécurité de la Realtime Database |
@@ -103,8 +103,6 @@ Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « 
 ## Ajouter des mots
 
 Modifiez `js/words.js`. Dans n'importe quel groupe (thème, anime ou duo croisé), une paire s'écrit `["Mot A","Mot B"]` ou `["Mot A","Mot B", niveau]` avec un niveau de 1 (facile) à 3 (hardcore). Un duo étiqueté ne sort qu'à son niveau ; un duo sans niveau sort à tous les niveaux. Pour un duo croisé, le niveau est le cinquième élément : `["Nom A","Série A","Nom B","Série B", 3]`.
-
-L'éditeur intégré (« Ajouter des mots » sur l'accueil) permet aussi d'ajouter des duos, avec leur niveau, depuis l'application ; ils sont conservés sur l'appareil et exportables sous forme de code à coller dans le fichier.
 
 ## Tests
 

@@ -1,5 +1,5 @@
 /* =====================================================================
-   APPLICATION — accueil, configuration, paramètres, éditeur, câblage
+   APPLICATION — accueil, configuration, paramètres, câblage
    ===================================================================== */
 (function(global){
   "use strict";
@@ -9,13 +9,18 @@
   var DEFAULT_RULES = { whiteGuess:true, whiteNotFirst:true, announce:true, emblem:true, tieWins:true, hideRoles:false };
   var DEFAULT_POINTS = { civilAlive:3, civilDead:2, undercover:4, white:6, whiteGuess:8 };
   var DIFF_LABELS = { 1:"facile", 2:"intermédiaire", 3:"hardcore" };
+  var DIFF_NOTES = {
+    1:"Les deux mots sont éloignés : les intrus se repèrent vite.",
+    2:"Les deux mots sont proches, sans être ambigus. Le réglage conseillé.",
+    3:"Les deux mots sont presque synonymes : les intrus passent facilement inaperçus."
+  };
 
   var SETTINGS = {
     appearance:"auto", diff:2,
     rules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
     points: JSON.parse(JSON.stringify(DEFAULT_POINTS)),
     undercover:1, white:0, timer:0, tieRule:"revote", firstVoteAfter:1,
-    sel:{ customWords:false, mode:"theme", serieId:"random", themeId:"random", custom:["",""] },
+    sel:{ mode:"theme", serieId:"random", themeId:"random" },
     players:[]
   };
   (function loadSettings(){
@@ -30,7 +35,7 @@
 
   var ACTIVE = null;              /* contrôleur qui possède l'écran de partie : Local ou Online */
   var configCount = function(){ return SETTINGS.players.length; };
-  var returnScreen = null;        /* écran à retrouver en quittant les paramètres ou l'éditeur */
+  var returnScreen = null;        /* écran à retrouver en quittant les paramètres */
 
   function getConfig(){
     var c = { undercover:SETTINGS.undercover, white:SETTINGS.white, timer:SETTINGS.timer, tieRule:SETTINGS.tieRule,
@@ -38,22 +43,12 @@
     Object.keys(SETTINGS.rules).forEach(function(k){ c[k] = SETTINGS.rules[k]; });
     return c;
   }
-  function getSelection(){
-    var s = JSON.parse(JSON.stringify(SETTINGS.sel));
-    s.custom = [$("word-civil").value.trim(), $("word-under").value.trim()];
-    return s;
-  }
+  function getSelection(){ return JSON.parse(JSON.stringify(SETTINGS.sel)); }
   function drawPair(){ return WordBank.draw(getSelection(), SETTINGS.diff); }
   function problem(count){
     var err = Engine.validate(count, getConfig());
     if (err) return err;
-    var sel = getSelection();
-    if (sel.customWords){
-      if (!sel.custom[0] || !sel.custom[1]) return "Renseignez les deux mots.";
-      if (Engine.norm(sel.custom[0]) === Engine.norm(sel.custom[1])) return "Les deux mots doivent être différents.";
-    } else if (WordBank.poolSize(sel, SETTINGS.diff) === 0){
-      return "Aucun duo disponible pour cette sélection.";
-    }
+    if (WordBank.poolSize(getSelection(), SETTINGS.diff) === 0) return "Aucun duo disponible pour cette sélection.";
     return null;
   }
 
@@ -75,19 +70,13 @@
     pressGroup("[data-tie]", "data-tie", SETTINGS.tieRule);
     pressGroup("[data-first-vote]", "data-first-vote", SETTINGS.firstVoteAfter);
     pressGroup("[data-diff]", "data-diff", SETTINGS.diff);
-    var st = WordBank.stats();
-    $("diff-note").textContent = "Niveau " + DIFF_LABELS[SETTINGS.diff] + ". " + st.tagged + " duos sur " + st.total +
-      " portent un niveau dans js/words.js et ne sortent qu'à leur niveau ; les autres sortent toujours.";
+    $("diff-note").textContent = DIFF_NOTES[SETTINGS.diff];
 
     var n = configCount(), imp = SETTINGS.undercover + SETTINGS.white, civ = n - imp, tally = $("tally-config");
     if (n === 0){ tally.textContent = "En attente de joueurs."; tally.className = "tally"; }
     else if (civ <= imp || civ < 2){ tally.textContent = "Les civils doivent être plus nombreux que les intrus (" + n + " joueur" + (n>1?"s":"") + ")."; tally.className = "tally bad"; }
     else { tally.textContent = civ + " civils · " + SETTINGS.undercover + " undercover · " + SETTINGS.white + " Mr White"; tally.className = "tally"; }
 
-    $("tab-random").setAttribute("aria-pressed", String(!SETTINGS.sel.customWords));
-    $("tab-custom").setAttribute("aria-pressed", String(SETTINGS.sel.customWords));
-    $("pair-inputs").hidden = !SETTINGS.sel.customWords;
-    $("theme-zone").hidden = SETTINGS.sel.customWords;
     pressGroup("[data-mode]", "data-mode", SETTINGS.sel.mode);
     renderSeries();
     $("theme-note").textContent = WordBank.describe(getSelection(), SETTINGS.diff);
@@ -137,10 +126,6 @@
     onGroup("[data-first-vote]", "data-first-vote", function(v){ SETTINGS.firstVoteAfter = parseInt(v,10); });
     onGroup("[data-diff]", "data-diff", function(v){ SETTINGS.diff = parseInt(v,10); });
     onGroup("[data-mode]", "data-mode", function(v){ SETTINGS.sel.mode = v; });
-    $("tab-random").addEventListener("click", function(){ SETTINGS.sel.customWords = false; saveSettings(); renderConfig(); });
-    $("tab-custom").addEventListener("click", function(){ SETTINGS.sel.customWords = true; saveSettings(); renderConfig(); });
-    $("word-civil").addEventListener("input", renderConfig);
-    $("word-under").addEventListener("input", renderConfig);
   }
 
   /* ---------- navigation ---------- */
@@ -184,7 +169,7 @@
   function bindHome(){
     $("top-back").addEventListener("click", function(){
       var cur = UI.currentScreen();
-      if (cur === "screen-settings" || cur === "screen-editor") goBack(); else goHome();
+      if (cur === "screen-settings") goBack(); else goHome();
     });
     $("top-settings").addEventListener("click", function(){ if (UI.currentScreen() !== "screen-settings") openSettings(false); });
     $("open-rules").addEventListener("click", function(){ openSettings(true); });
@@ -214,7 +199,6 @@
     $("home-join").addEventListener("click", joinNow);
     $("home-join-code").addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); joinNow(); } });
     $("home-join-code").addEventListener("input", function(){ this.value = this.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0,4); });
-    $("open-editor").addEventListener("click", function(){ returnScreen = UI.currentScreen(); renderDest(); renderAdded(); UI.show("screen-editor"); });
   }
 
   /* ---------- joueurs (mode local) ---------- */
@@ -374,156 +358,6 @@
     $("settings-back").addEventListener("click", goBack);
   }
 
-  /* ---------- éditeur de duos (ajouts conservés sur l'appareil) ---------- */
-  var ED = { dest:"theme", level:0 };
-  var ADDED = Store.get("added", []);
-  function hashCode(s){ var h = 0; for (var i=0;i<s.length;i++){ h = (h * 31 + s.charCodeAt(i)) | 0; } return Math.abs(h); }
-  function slug(label){
-    var base = Engine.norm(label) || "theme", id = base, k = 2;
-    while (WordBank.byId(WORDS.SERIES, id) || WordBank.byId(WORDS.THEMES, id)){ id = base + "-" + k; k++; }
-    return id;
-  }
-  function tintFrom(label){ return "hsl(" + (hashCode(Engine.norm(label)) % 360) + ", 45%, 55%)"; }
-  function pairOf(item){
-    if (item.kind === "cross"){ var c = [item.a, item.sa, item.b, item.sb]; if (item.level) c.push(item.level); return c; }
-    var p = [item.a, item.b]; if (item.level) p.push(item.level); return p;
-  }
-  function applyAdded(item){
-    if (item.kind === "cross"){ WORDS.CROSSOVER.push(pairOf(item)); return; }
-    var list = item.kind === "serie" ? WORDS.SERIES : WORDS.THEMES;
-    var group = WordBank.byId(list, item.groupId);
-    if (!group){ group = { id:item.groupId, label:item.label, tint:tintFrom(item.label), pairs:[] }; list.push(group); }
-    group.pairs.push(pairOf(item));
-  }
-  function unapplyAdded(item){
-    if (item.kind === "cross"){
-      for (var i=0;i<WORDS.CROSSOVER.length;i++){ if (WORDS.CROSSOVER[i][0] === item.a && WORDS.CROSSOVER[i][2] === item.b){ WORDS.CROSSOVER.splice(i,1); break; } }
-      return;
-    }
-    var list = item.kind === "serie" ? WORDS.SERIES : WORDS.THEMES;
-    var group = WordBank.byId(list, item.groupId);
-    if (!group) return;
-    for (var j=0;j<group.pairs.length;j++){ if (group.pairs[j][0] === item.a && group.pairs[j][1] === item.b){ group.pairs.splice(j,1); break; } }
-    if (!group.pairs.length){ var idx = list.indexOf(group); if (idx !== -1) list.splice(idx,1); }
-  }
-  ADDED.forEach(applyAdded);
-  function saveAdded(){ Store.set("added", ADDED); }
-
-  function mkSelect(id, list, withNew, label){
-    var wrap = UI.el("label", "field");
-    wrap.appendChild(UI.el("span", null, label));
-    var sel = UI.el("select"); sel.id = id;
-    list.forEach(function(g){ var o = UI.el("option", null, g.label); o.value = g.id; sel.appendChild(o); });
-    if (withNew){ var o2 = UI.el("option", null, "— Créer un nouveau groupe —"); o2.value = "__new__"; sel.appendChild(o2); }
-    wrap.appendChild(sel);
-    return wrap;
-  }
-  function renderDest(){
-    var box = $("dest-fields"); UI.clear(box);
-    if (ED.dest === "serie" || ED.dest === "theme"){
-      var list = ED.dest === "serie" ? WORDS.SERIES : WORDS.THEMES;
-      box.appendChild(mkSelect("ed-group", list, true, ED.dest === "serie" ? "Anime" : "Thème"));
-      var nw = UI.el("label", "field"); nw.id = "ed-new-wrap"; nw.hidden = true;
-      nw.appendChild(UI.el("span", null, "Nom du nouveau groupe"));
-      var inp = UI.el("input"); inp.type = "text"; inp.id = "ed-new"; inp.maxLength = 28; inp.autocomplete = "off";
-      nw.appendChild(inp);
-      box.appendChild(nw);
-      $("ed-group").addEventListener("change", function(){ $("ed-new-wrap").hidden = (this.value !== "__new__"); });
-    } else {
-      box.appendChild(mkSelect("ed-sa", WORDS.SERIES, false, "Anime du premier nom"));
-      box.appendChild(mkSelect("ed-sb", WORDS.SERIES, false, "Anime du second nom"));
-    }
-  }
-  function renderAdded(){
-    var list = $("ed-list"); UI.clear(list);
-    $("ed-count").textContent = ADDED.length;
-    $("ed-empty").hidden = ADDED.length > 0;
-    ADDED.forEach(function(item, idx){
-      var li = UI.el("li");
-      var left = UI.el("span", null, item.a + " / " + item.b);
-      var where = item.kind === "cross" ? (item.sa + " · " + item.sb) : item.label;
-      left.appendChild(UI.el("small", null, where + (item.level ? " · " + DIFF_LABELS[item.level] : "")));
-      var del = UI.el("button", "btn ghost small inline", "Retirer"); del.type = "button";
-      del.addEventListener("click", function(){ unapplyAdded(item); ADDED.splice(idx,1); saveAdded(); renderAdded(); renderDest(); });
-      li.appendChild(left); li.appendChild(del);
-      list.appendChild(li);
-    });
-  }
-  function esc(s){ return String(s).replace(/"/g, '\\"'); }
-  function codeOf(item){
-    return "[" + pairOf(item).map(function(x){ return typeof x === "number" ? String(x) : '"' + esc(x) + '"'; }).join(",") + "],";
-  }
-  function bindEditor(){
-    var destBtns = document.querySelectorAll("[data-dest]");
-    for (var i=0;i<destBtns.length;i++){
-      destBtns[i].addEventListener("click", function(){
-        ED.dest = this.getAttribute("data-dest");
-        pressGroup("[data-dest]", "data-dest", ED.dest);
-        UI.toast("ed-toast", ""); renderDest();
-      });
-    }
-    var lvBtns = document.querySelectorAll("[data-ed-level]");
-    for (var l=0;l<lvBtns.length;l++){
-      lvBtns[l].addEventListener("click", function(){ ED.level = parseInt(this.getAttribute("data-ed-level"),10); pressGroup("[data-ed-level]", "data-ed-level", ED.level); });
-    }
-    $("ed-add").addEventListener("click", function(){
-      var a = $("ed-a").value.trim().replace(/\s+/g," "), b = $("ed-b").value.trim().replace(/\s+/g," ");
-      if (!a || !b){ UI.toast("ed-toast", "Renseignez les deux mots."); return; }
-      if (Engine.norm(a) === Engine.norm(b)){ UI.toast("ed-toast", "Les deux mots doivent être différents."); return; }
-      var item;
-      if (ED.dest === "cross"){
-        var sa = WordBank.byId(WORDS.SERIES, $("ed-sa").value), sb = WordBank.byId(WORDS.SERIES, $("ed-sb").value);
-        if (!sa || !sb || sa === sb){ UI.toast("ed-toast", "Choisissez deux animes différents."); return; }
-        item = { kind:"cross", a:a, b:b, sa:sa.label, sb:sb.label, level:ED.level || 0 };
-      } else {
-        var isSerie = ED.dest === "serie", list = isSerie ? WORDS.SERIES : WORDS.THEMES;
-        var val = $("ed-group").value, group;
-        if (val === "__new__"){
-          var label = $("ed-new").value.trim();
-          if (!label){ UI.toast("ed-toast", "Nommez le nouveau groupe."); return; }
-          group = { id:slug(label), label:label };
-        } else group = WordBank.byId(list, val);
-        if (!group){ UI.toast("ed-toast", "Groupe introuvable."); return; }
-        item = { kind:isSerie ? "serie" : "theme", a:a, b:b, groupId:group.id, label:group.label, level:ED.level || 0 };
-      }
-      applyAdded(item); ADDED.push(item); saveAdded();
-      $("ed-a").value = ""; $("ed-b").value = ""; UI.toast("ed-toast", "Duo ajouté.", true); $("ed-a").focus();
-      renderDest(); renderAdded();
-    });
-    $("ed-export").addEventListener("click", function(){
-      if (!ADDED.length){ UI.toast("ed-toast", "Aucun ajout à exporter."); return; }
-      var groups = {}, cross = [], out = [];
-      ADDED.forEach(function(it){
-        if (it.kind === "cross"){ cross.push("    " + codeOf(it)); return; }
-        var key = it.kind + "|" + it.groupId + "|" + it.label;
-        (groups[key] = groups[key] || []).push(codeOf(it));
-      });
-      Object.keys(groups).forEach(function(key){
-        var parts = key.split("|"), kind = parts[0], gid = parts[1], label = parts[2];
-        var group = WordBank.byId(kind === "serie" ? WORDS.SERIES : WORDS.THEMES, gid);
-        var isNew = group && group.pairs.length === groups[key].length;
-        if (isNew){
-          out.push("/* Nouveau groupe : à coller dans " + (kind === "serie" ? "SERIES" : "THEMES") + " (js/words.js) */");
-          out.push('    { id:"' + gid + '", label:"' + esc(label) + '", tint:"' + (group ? group.tint : "#E0A93B") + '",');
-          out.push('      pairs:[ ' + groups[key].join("").replace(/,$/, "") + ' ] },');
-        } else {
-          out.push("/* À coller dans le tableau pairs de « " + label + " » (js/words.js) */");
-          out.push('        ' + groups[key].join(""));
-        }
-        out.push("");
-      });
-      if (cross.length){ out.push("/* À coller dans CROSSOVER (js/words.js) */"); out = out.concat(cross); }
-      $("ed-out").value = out.join("\n"); $("ed-out").hidden = false; $("ed-copy").hidden = false; UI.toast("ed-toast", "");
-    });
-    $("ed-copy").addEventListener("click", function(){
-      var ta = $("ed-out"), btn = this;
-      var done = function(){ btn.textContent = "Copié"; setTimeout(function(){ btn.textContent = "Copier dans le presse-papier"; }, 1600); };
-      try { if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(done, function(){ ta.select(); }); return; } } catch(e){}
-      ta.select(); btn.textContent = "Sélectionné : copiez manuellement";
-    });
-    $("ed-back").addEventListener("click", goBack);
-  }
-
   /* ---------- amorçage ---------- */
   global.App = {
     getConfig:getConfig, getSelection:getSelection, drawPair:drawPair, problem:problem,
@@ -533,7 +367,7 @@
   };
 
   applyAppearance();
-  bindConfig(); bindHome(); bindSetup(); bindPlay(); bindSettings(); bindEditor();
+  bindConfig(); bindHome(); bindSetup(); bindPlay(); bindSettings();
   Local.init();
   Online.init();
   moveConfigPanel("config-slot-local");

@@ -56,7 +56,6 @@
     </div>
 
     <div class="links">
-      <button class="link" id="open-editor" type="button">Ajouter des mots</button>
       <button class="link" id="open-rules" type="button">Règles du jeu</button>
     </div>
   </section>
@@ -141,13 +140,6 @@
         </div>
         <p class="hint" id="diff-note"></p>
       </div>
-      <div class="setting column">
-        <span class="setting-label">Origine</span>
-        <div class="segmented" role="group" aria-label="Origine des mots">
-          <button type="button" id="tab-random" aria-pressed="true">Tirage au sort</button>
-          <button type="button" id="tab-custom" aria-pressed="false">Mots choisis</button>
-        </div>
-      </div>
       <div id="theme-zone">
         <div class="options" id="modes" role="group" aria-label="Mode de tirage">
           <button type="button" data-mode="theme" aria-pressed="true"><b>Mots et thèmes</b><span>Tout public, jeux vidéo, football, rap français, cinéma.</span></button>
@@ -156,10 +148,6 @@
         </div>
         <div class="chipset" id="series" role="group" aria-label="Choix de la série"></div>
         <p class="hint" id="theme-note"></p>
-      </div>
-      <div class="stack" id="pair-inputs" hidden style="margin-top:12px">
-        <label class="field"><span>Mot des civils</span><input type="text" id="word-civil" placeholder="Chat" autocomplete="off" maxlength="28"></label>
-        <label class="field"><span>Mot des undercover</span><input type="text" id="word-under" placeholder="Chien" autocomplete="off" maxlength="28"></label>
       </div>
     </div>
   </div>
@@ -391,49 +379,6 @@
     <button class="btn secondary" id="settings-back" type="button">Retour</button>
   </section>
 
-  <!-- ÉDITEUR -->
-  <section id="screen-editor" class="page" hidden>
-    <h1 class="title">Ajouter des mots</h1>
-    <p class="subtitle">Les ajouts sont conservés sur cet appareil et utilisables tout de suite. Pour les partager avec tout le monde, exportez le code et collez-le dans js/words.js.</p>
-
-    <div class="card">
-      <h2>Destination</h2>
-      <div class="segmented" role="group" aria-label="Destination du duo">
-        <button type="button" data-dest="theme" aria-pressed="true">Thème</button>
-        <button type="button" data-dest="serie" aria-pressed="false">Anime</button>
-        <button type="button" data-dest="cross" aria-pressed="false">Croisé</button>
-      </div>
-      <div class="stack" id="dest-fields" style="margin-top:12px"></div>
-    </div>
-
-    <div class="card">
-      <h2>Nouveau duo</h2>
-      <label class="field"><span>Premier mot</span><input type="text" id="ed-a" autocomplete="off" maxlength="32"></label>
-      <label class="field"><span>Second mot</span><input type="text" id="ed-b" autocomplete="off" maxlength="32"></label>
-      <div class="setting column" style="padding-top:0">
-        <span class="setting-label">Difficulté du duo</span>
-        <div class="segmented" role="group" aria-label="Difficulté du duo">
-          <button type="button" data-ed-level="0" aria-pressed="true">Tous niveaux</button>
-          <button type="button" data-ed-level="1" aria-pressed="false">Facile</button>
-          <button type="button" data-ed-level="2" aria-pressed="false">Inter.</button>
-          <button type="button" data-ed-level="3" aria-pressed="false">Hardcore</button>
-        </div>
-      </div>
-      <p class="toast" id="ed-toast"></p>
-      <button class="btn" id="ed-add" type="button">Ajouter le duo</button>
-    </div>
-
-    <div class="card">
-      <h2>Ajouts conservés <span class="count" id="ed-count">0</span></h2>
-      <ul class="result-list" id="ed-list"></ul>
-      <p class="empty" id="ed-empty">Aucun ajout pour le moment.</p>
-      <button class="btn ghost small" id="ed-export" type="button" style="margin-top:12px">Générer le code à copier</button>
-      <textarea id="ed-out" readonly hidden aria-label="Code à copier"></textarea>
-      <button class="btn ghost small" id="ed-copy" type="button" hidden>Copier dans le presse-papier</button>
-    </div>
-
-    <button class="btn secondary" id="ed-back" type="button">Retour</button>
-  </section>
 
 </main>
 <div id="snack" hidden></div>
