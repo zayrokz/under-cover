@@ -15,6 +15,22 @@ node tools/serve.js
 
 puis rendez-vous sur http://localhost:5173. Le site est entièrement statique : GitHub Pages, Netlify, Vercel ou Firebase Hosting conviennent tels quels.
 
+### Déployer sur Render
+
+Le dépôt contient un `package.json` dont le script `start` lance `tools/serve.js`, qui écoute sur le port fourni par Render (`PORT`). Dans le service Render (type **Web Service**) :
+
+| Champ | Valeur |
+| --- | --- |
+| Root Directory | *(vide)* |
+| Build Command | `npm install` |
+| Start Command | `npm start` |
+
+Aucune variable d'environnement n'est nécessaire : le mode en ligne repose sur Firebase, lu directement par le navigateur via `firebase-config.js`. La clé `apiKey` Firebase n'est pas un secret : elle identifie le projet, et ce sont les règles de `database.rules.json` qui protègent les données. Elle peut donc être commise dans le dépôt.
+
+### Faut-il MongoDB ?
+
+Non. Toutes les données de jeu (salons, joueurs, parties, scores, historique) sont stockées dans la Realtime Database de Firebase, qui sert aussi de canal temps réel entre les téléphones. Un serveur Node ne fait ici que distribuer les fichiers statiques. Une base MongoDB ne serait utile que si le mode en ligne était réécrit autour d'un serveur Socket.io, ce qui n'est pas le cas.
+
 ## Activer le mode en ligne (Firebase)
 
 1. Créez un projet sur https://console.firebase.google.com.
