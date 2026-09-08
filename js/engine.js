@@ -15,6 +15,7 @@
   var DEFAULT_CONFIG = {
     undercover:1, white:0,
     timer:0,                 // secondes par description, 0 = désactivé
+    firstVoteAfter:1,        // nombre de tours de description avant le premier vote (1 ou 2) ; ensuite on vote à chaque tour
     tieRule:"revote",        // "revote" : un second vote entre ex æquo, puis personne ; "none" : personne d'emporte
     whiteGuess:true,         // Mr White tente de deviner quand il est éliminé
     whiteNotFirst:true,      // Mr White ne parle jamais en premier
@@ -137,6 +138,7 @@
     return v.length > 0;
   }
   function pendingVoters(s){ return voters(s).filter(function(id){ return !s.votes[id]; }); }
+  function voteFollowsRound(s){ return s.round >= (s.config.firstVoteAfter || 1); }
   function describedThisRound(s){
     return s.descriptions.filter(function(d){ return d.round === s.round; });
   }
@@ -169,6 +171,7 @@
       s.turnIndex += 1;
     }
     if (s.turnIndex >= s.order.length){
+      if (s.round < (s.config.firstVoteAfter || 1)){ return startRound(s); }   /* tour supplémentaire sans vote */
       s.phase = "vote";
       s.turnStartedAt = null;
       s.votes = {};
@@ -462,6 +465,7 @@
     allVoted: allVoted,
     pendingVoters: pendingVoters,
     describedThisRound: describedThisRound,
+    voteFollowsRound: voteFollowsRound,
     startRound: startRound,
     submitDescription: submitDescription,
     skipTurn: skipTurn,

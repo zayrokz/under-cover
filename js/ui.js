@@ -21,11 +21,17 @@
 
   function $(id){ return document.getElementById(id); }
   var SCREENS = ["screen-home","screen-setup","screen-lobby","screen-deal","screen-card","screen-play","screen-end","screen-settings","screen-editor"];
+  var BACK_SCREENS = { "screen-setup":true, "screen-settings":true, "screen-editor":true };
+  var CONTEXT = { "screen-setup":"Nouvelle partie", "screen-lobby":"Salon", "screen-deal":"Distribution", "screen-card":"Votre carte",
+    "screen-play":"Partie", "screen-end":"Fin de partie", "screen-settings":"Paramètres", "screen-editor":"Mots" };
   var current = null;
   function show(id){
     for (var i=0;i<SCREENS.length;i++){ $(SCREENS[i]).hidden = (SCREENS[i] !== id); }
     if (current !== id) window.scrollTo(0,0);
     current = id;
+    document.body.setAttribute("data-screen", id);
+    $("top-back").hidden = !BACK_SCREENS[id];
+    $("top-context").textContent = CONTEXT[id] || "";
   }
   function currentScreen(){ return current; }
   function el(tag, cls, text){
@@ -44,7 +50,7 @@
     return list.slice(0,-1).join(", ") + " et " + list[list.length-1];
   }
 
-  /* ---------- snack ---------- */
+  /* ---------- messages ---------- */
   var snackTimer = null;
   function snack(msg, ms){
     var s = $("snack");
@@ -68,13 +74,13 @@
   }
   function paintEmblem(node, name, universe, isWhite){
     clear(node);
-    node.style.background = "var(--sunk)";
+    node.style.background = "var(--surface-2)";
     if (isWhite){
-      node.style.borderColor = "var(--alert)"; node.style.color = "var(--alert)"; node.textContent = "?";
+      node.style.borderColor = "var(--danger)"; node.style.color = "var(--danger)"; node.textContent = "?";
       return;
     }
     node.style.color = "var(--text)";
-    node.style.borderColor = universe ? WordBank.tintOf(universe) : "#E0A93B";
+    node.style.borderColor = universe ? WordBank.tintOf(universe) : "var(--accent)";
     var url = WORDS.IMAGES[Engine.norm(name)];
     if (url){
       var img = document.createElement("img");
@@ -90,24 +96,7 @@
     node.textContent = initials(name);
   }
 
-  /* ---------- carte à maintenir ---------- */
-  function bindHoldCard(card, onOpen){
-    var open = function(){ card.classList.add("open"); if (onOpen) onOpen(); };
-    var close = function(){ card.classList.remove("open"); };
-    if (window.PointerEvent){
-      card.addEventListener("pointerdown", function(e){ e.preventDefault(); open(); });
-    } else {
-      card.addEventListener("touchstart", function(e){ e.preventDefault(); open(); }, {passive:false});
-      card.addEventListener("mousedown", function(e){ e.preventDefault(); open(); });
-    }
-    ["pointerup","pointercancel","mouseup","touchend","touchcancel","blur"].forEach(function(ev){ window.addEventListener(ev, close); });
-    card.addEventListener("contextmenu", function(e){ e.preventDefault(); });
-    card.addEventListener("keydown", function(e){ if (e.key === " " || e.key === "Enter"){ e.preventDefault(); open(); } });
-    card.addEventListener("keyup", function(e){ if (e.key === " " || e.key === "Enter"){ close(); } });
-    return { close:close };
-  }
-
-  /* prefix = "card" ou "mycard" ; priv = Engine.privateView ; cfg = config de partie */
+  /* ---------- carte secrète (prefix = "card" ou "mycard") ---------- */
   function fillCard(prefix, priv, cfg){
     var emblem = $(prefix + "-emblem"), kicker = $(prefix + "-kicker"), word = $(prefix + "-word"), sub = $(prefix + "-sub");
     emblem.hidden = !cfg.emblem;
@@ -124,6 +113,10 @@
       word.className = "word";
       sub.textContent = priv.uni ? priv.uniLabel + " : " + priv.uni : "";
     }
+  }
+  function showSecret(prefix, shown){
+    $(prefix + "-hidden").hidden = !!shown;
+    $(prefix + "-shown").hidden = !shown;
   }
 
   /* ---------- minuteur ---------- */
@@ -155,15 +148,13 @@
       var p = Engine.player(s, id);
       if (!p) return;
       var li = el("li");
-      var who = el("span", "who", p.name);
-      li.appendChild(who);
+      li.appendChild(el("span", "who", p.name));
       if (!p.alive) li.classList.add("out");
       if (speaker === id) li.classList.add("active");
       if (ctx.meId && ctx.meId === id) li.classList.add("me");
       if (p.left) li.appendChild(el("span", "badge", "parti"));
-      else if (!p.alive){
-        li.appendChild(el("span", "badge", p.revealed ? roleLabel(p.role) : "éliminé"));
-      } else if (s.phase === "vote" && s.votes[id]) li.appendChild(el("span", "badge done", "a voté"));
+      else if (!p.alive) li.appendChild(el("span", "badge", p.revealed ? roleLabel(p.role) : "éliminé"));
+      else if (s.phase === "vote" && s.votes[id]) li.appendChild(el("span", "badge done", "a voté"));
       if (ctx.members && p.alive && !p.left && ctx.members[id] && ctx.members[id].connected === false){
         li.appendChild(el("span", "badge warn", "déconnecté"));
       }
@@ -196,18 +187,17 @@
   function renderTally(container, s){
     clear(container);
     var lv = s.lastVote;
-    if (!lv || !lv.counts){ return; }
+    if (!lv || !lv.counts) return;
     var ids = Object.keys(lv.counts).sort(function(a,b){ return lv.counts[b] - lv.counts[a]; });
     ids.forEach(function(id){
       var p = Engine.player(s, id);
       if (!p) return;
       var li = el("li");
-      var left = el("span");
-      left.textContent = p.name;
+      var left = el("span", null, p.name);
       var voters = Object.keys(lv.votes || {}).filter(function(v){ return lv.votes[v] === id; });
-      if (voters.length){ left.appendChild(el("small", null, "voté par " + joinNames(names(s, voters)))); }
-      var n = el("span", "tag " + (lv.counts[id] > 0 ? "undercover" : "muted"), lv.counts[id] + (lv.counts[id] > 1 ? " voix" : " voix"));
-      li.appendChild(left); li.appendChild(n);
+      if (voters.length) left.appendChild(el("small", null, "voté par " + joinNames(names(s, voters))));
+      li.appendChild(left);
+      li.appendChild(el("span", "tag " + (lv.counts[id] > 0 ? "undercover" : "muted"), lv.counts[id] + " voix"));
       container.appendChild(li);
     });
   }
@@ -218,8 +208,8 @@
     var box = el("div", "confirm");
     box.appendChild(el("p", null, text));
     var row = el("div", "row");
-    var yes = el("button", "btn-danger", yesLabel); yes.type = "button";
-    var no = el("button", "btn-mini", "Annuler"); no.type = "button";
+    var yes = el("button", "danger", yesLabel); yes.type = "button";
+    var no = el("button", null, "Annuler"); no.type = "button";
     yes.addEventListener("click", function(){ clear(slot); onYes(); });
     no.addEventListener("click", function(){ clear(slot); if (onNo) onNo(); });
     row.appendChild(yes); row.appendChild(no);
@@ -233,9 +223,8 @@
   function renderPlay(s, ctx){
     show("screen-play");
     var PHASES = { describe:"Description", vote: s.revote ? "Second vote" : "Vote", whiteGuess:"Mr White devine", reveal:"Résultat" };
-    $("play-round").textContent = s.round;
     $("play-phase").textContent = PHASES[s.phase] || s.phase;
-    $("play-title").textContent = PHASES[s.phase] || "Partie";
+    $("play-round").textContent = "Tour " + s.round;
 
     ["describe-panel","vote-panel","guess-panel","reveal-panel"].forEach(function(id){ $(id).hidden = true; });
     var nowFn = function(){ return Date.now() + (ctx.clockOffset || 0); };
@@ -252,19 +241,22 @@
       $("describe-wait").hidden = canAct;
       if (!canAct){
         var off = ctx.members && ctx.members[cur] && ctx.members[cur].connected === false;
-        $("describe-wait").innerHTML = "";
-        $("describe-wait").appendChild(document.createTextNode("En attente de "));
-        $("describe-wait").appendChild(el("b", null, p ? p.name : "?"));
-        $("describe-wait").appendChild(document.createTextNode(off ? " (déconnecté)…" : "…"));
+        var w = $("describe-wait"); clear(w);
+        w.appendChild(document.createTextNode("En attente de "));
+        w.appendChild(el("b", null, p ? p.name : "?"));
+        w.appendChild(document.createTextNode(off ? " (déconnecté)…" : "…"));
       }
-      var showSkip = ctx.isHost || canAct;
-      $("describe-skip").hidden = !showSkip;
+      var remainingSpeakers = s.order.slice(s.turnIndex + 1).filter(function(id){ var q = Engine.player(s, id); return q && q.alive; }).length;
+      $("describe-hint").textContent = Engine.voteFollowsRound(s)
+        ? (remainingSpeakers ? "Encore " + remainingSpeakers + " joueur" + (remainingSpeakers > 1 ? "s" : "") + " avant le vote." : "Dernier à parler : le vote suit.")
+        : "Tour sans vote : un second tour de description suivra.";
+      $("describe-skip").hidden = !(ctx.isHost || canAct);
       $("describe-skip").textContent = canAct ? "Passer son tour" : "Passer le tour de " + (p ? p.name : "");
       if (s.config.timer > 0 && s.turnStartedAt){
         $("timer").hidden = false;
         runTimer(key, s.turnStartedAt + s.config.timer * 1000, s.config.timer * 1000, nowFn, function(){ if (ctx.on.timerExpired) ctx.on.timerExpired(); });
       } else { $("timer").hidden = true; stopTimer(); }
-      if (canAct && ctx.mode === "online") setTimeout(function(){ try { $("describe-input").focus(); } catch(e){} }, 50);
+      if (canAct && ctx.mode === "online") setTimeout(function(){ try { $("describe-input").focus({ preventScroll:true }); } catch(e){} }, 50);
     } else { stopTimer(); }
 
     /* ----- vote ----- */
@@ -335,14 +327,13 @@
     /* ----- Mr White devine ----- */
     if (s.phase === "whiteGuess"){
       $("guess-panel").hidden = false;
-      var w = Engine.player(s, s.whiteGuesser);
-      var canGuess = !!w && ctx.canActFor(w.id);
-      $("guess-info").textContent = (w ? w.name + " était Mr White. " : "") + "Un seul essai pour nommer le mot des civils.";
+      var wp = Engine.player(s, s.whiteGuesser);
+      var canGuess = !!wp && ctx.canActFor(wp.id);
+      $("guess-info").textContent = (wp ? wp.name + " était Mr White. " : "") + "Un seul essai pour nommer le mot des civils.";
       $("guess-form").hidden = !canGuess;
       $("guess-wait").hidden = canGuess;
-      $("guess-wait").textContent = "En attente de la réponse de " + (w ? w.name : "Mr White") + "…";
+      $("guess-wait").textContent = "En attente de la réponse de " + (wp ? wp.name : "Mr White") + "…";
       $("guess-skip").hidden = !(ctx.isHost || canGuess);
-      if (ctx.mode === "local") $("guess-input").value = $("guess-input").value;
     }
 
     /* ----- résultat ----- */
@@ -370,21 +361,19 @@
           v.appendChild(document.createTextNode(le.guess ? "Sa proposition « " + le.guess + " » était fausse." : "Il n'a pas proposé de mot."));
         }
       }
-      var w2 = Engine.winCheck(s);
+      var over = Engine.winCheck(s) || Engine.aliveCount(s) < 3;
       $("continue").hidden = !ctx.isHost;
       $("continue-wait").hidden = ctx.isHost;
-      $("continue").textContent = w2 || Engine.aliveCount(s) < 3 ? "Voir le résultat final" : "Manche suivante";
+      $("continue").textContent = over ? "Voir le résultat final" : "Tour suivant";
     }
 
-    /* ----- listes ----- */
     renderOrder($("order"), s, ctx);
     renderHistory($("history"), $("history-empty"), s, {});
 
-    /* ----- gestion ----- */
     $("open-remove").hidden = !ctx.isHost;
     $("reveal-all").hidden = !ctx.isHost;
     $("leave-game").hidden = !(ctx.mode === "online" && !ctx.isHost);
-    $("show-card").hidden = !(ctx.mode === "online" && ctx.canActFor && Engine.player(s, ctx.meId));
+    $("show-card").hidden = !(ctx.mode === "online" && Engine.player(s, ctx.meId));
     clear($("remove-slot"));
   }
 
@@ -401,16 +390,14 @@
     var list = $("end-list"); clear(list);
     s.players.forEach(function(p){
       var li = el("li", p.left ? "left" : "");
-      var left = el("span");
-      left.textContent = p.name + (p.word ? " — " + p.word : "");
-      var smallBits = [];
-      if (p.uni) smallBits.push(p.uni);
-      if (p.left) smallBits.push("a quitté la partie");
-      else if (!p.alive) smallBits.push("éliminé");
-      if (p.delta) smallBits.push("+" + p.delta + " pt" + (p.delta > 1 ? "s" : ""));
-      if (smallBits.length) left.appendChild(el("small", null, smallBits.join(" · ")));
-      var tag = el("span", "tag " + (p.role || "muted"), roleLabel(p.role));
-      li.appendChild(left); li.appendChild(tag);
+      var left = el("span", null, p.name + (p.word ? " — " + p.word : ""));
+      var bits = [];
+      if (p.uni) bits.push(p.uni);
+      if (p.left) bits.push("a quitté la partie"); else if (!p.alive) bits.push("éliminé");
+      if (p.delta) bits.push("+" + p.delta + " pt" + (p.delta > 1 ? "s" : ""));
+      if (bits.length) left.appendChild(el("small", null, bits.join(" · ")));
+      li.appendChild(left);
+      li.appendChild(el("span", "tag " + (p.role || "muted"), roleLabel(p.role)));
       list.appendChild(li);
     });
 
@@ -419,9 +406,8 @@
 
     $("manche-no").textContent = ctx.manche || 1;
     var pts = s.config.points;
-    $("score-rule").textContent = "Civil vainqueur : " + pts.civilAlive + " points s'il est en vie, " +
-      pts.civilDead + " sinon. Undercover : " + pts.undercover + ". Mr White : " + pts.white +
-      (s.config.whiteGuess ? ", " + pts.whiteGuess + " s'il devine le mot" : "") + ". Partie interrompue : aucun point.";
+    $("score-rule").textContent = "Civil vainqueur : " + pts.civilAlive + " points s'il est en vie, " + pts.civilDead + " sinon. Undercover : " + pts.undercover +
+      ". Mr White : " + pts.white + (s.config.whiteGuess ? ", " + pts.whiteGuess + " s'il devine le mot" : "") + ". Partie interrompue : aucun point.";
     var sl = $("score-list"); clear(sl);
     (ctx.scores || []).forEach(function(row, i){
       var li = el("li");
@@ -443,7 +429,7 @@
   global.UI = {
     $:$, show:show, currentScreen:currentScreen, el:el, clear:clear, snack:snack, toast:toast,
     roleLabel:roleLabel, roleText:roleText, isLight:isLight, joinNames:joinNames,
-    paintEmblem:paintEmblem, bindHoldCard:bindHoldCard, fillCard:fillCard,
+    paintEmblem:paintEmblem, fillCard:fillCard, showSecret:showSecret,
     runTimer:runTimer, stopTimer:stopTimer,
     renderOrder:renderOrder, renderHistory:renderHistory, renderTally:renderTally, confirmBox:confirmBox,
     renderPlay:renderPlay, renderEnd:renderEnd

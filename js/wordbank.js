@@ -22,9 +22,14 @@
     return f.length ? f : pairs;
   }
 
+  function eligibleCross(diff){
+    var f = W.CROSSOVER.filter(function(p){ return !p[4] || p[4] === diff; });
+    return f.length ? f : W.CROSSOVER;
+  }
+
   function poolSize(sel, diff){
     if (sel.customWords) return 1;
-    if (sel.mode === "mix") return W.CROSSOVER.length;
+    if (sel.mode === "mix") return eligibleCross(diff).length;
     var list = activeList(sel), cur = activeId(sel);
     if (cur === "random"){
       return list.reduce(function(n, s){ return n + eligible(s.pairs, diff).length; }, 0);
@@ -59,7 +64,8 @@
       return out;
     }
     if (sel.mode === "mix"){
-      var x = W.CROSSOVER[Math.floor(rng()*W.CROSSOVER.length)];
+      var pool0 = eligibleCross(diff);
+      var x = pool0[Math.floor(rng()*pool0.length)];
       out = { words:[x[0], x[2]], unis:[x[1], x[3]], uniLabel:"Univers" };
     } else {
       var list = activeList(sel), cur = activeId(sel);
@@ -82,7 +88,8 @@
   function stats(){
     var tagged = 0, total = 0;
     W.THEMES.concat(W.SERIES).forEach(function(g){ g.pairs.forEach(function(p){ total++; if (p[2]) tagged++; }); });
-    return { tagged:tagged, total:total + W.CROSSOVER.length };
+    W.CROSSOVER.forEach(function(p){ total++; if (p[4]) tagged++; });
+    return { tagged:tagged, total:total };
   }
 
   global.WordBank = {

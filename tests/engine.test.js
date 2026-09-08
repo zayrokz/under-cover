@@ -216,3 +216,33 @@ test("normalize rétablit les collections supprimées par Firebase", () => {
   assert.deepEqual(n.votes, {});
   assert.equal(n.config.tieRule, "revote");
 });
+
+test("premier vote après deux tours de description, puis vote à chaque tour", () => {
+  const s = mk(4, { undercover:1, firstVoteAfter:2 }, 37);
+  Engine.continueGame(s);
+  assert.equal(s.round, 1);
+  assert.equal(Engine.voteFollowsRound(s), false);
+  const r1 = s.round;
+  while (s.phase === "describe" && s.round === r1) Engine.submitDescription(s, Engine.currentSpeakerId(s), "x");
+  assert.equal(s.phase, "describe", "pas de vote après le premier tour");
+  assert.equal(s.round, 2);
+  assert.equal(Engine.describedThisRound(s).length, 0);
+  assert.equal(Engine.voteFollowsRound(s), true);
+  describeAll(s);
+  assert.equal(s.phase, "vote");
+  assert.equal(s.descriptions.length, 8);
+  const civil = role(s,"civil")[0];
+  voteAllFor(s, civil.id); Engine.resolveVotes(s); Engine.continueGame(s);
+  assert.equal(s.round, 3);
+  describeAll(s);
+  assert.equal(s.phase, "vote", "on vote à chaque tour après le premier vote");
+});
+
+test("joueur qui quitte pendant un tour sans vote", () => {
+  const s = mk(5, { undercover:1, firstVoteAfter:2 }, 41);
+  Engine.continueGame(s);
+  while (Engine.currentSpeakerId(s) !== s.order[s.order.length-1]) Engine.submitDescription(s, Engine.currentSpeakerId(s), "x");
+  Engine.removePlayer(s, Engine.currentSpeakerId(s));
+  assert.equal(s.phase, "describe");
+  assert.equal(s.round, 2);
+});

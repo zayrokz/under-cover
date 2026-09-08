@@ -9,7 +9,7 @@
   var $ = function(id){ return document.getElementById(id); };
 
   var G = null;           /* { state, scores:{nom:pts}, manche, dealIndex, screen, voteUnlocked, scored } */
-  var cardSeen = false;
+  var cardOpen = false;
 
   function save(){ if (G) Store.set("local.game", G); }
   function load(){
@@ -47,26 +47,28 @@
   function renderDeal(){
     var s = G.state, p = s.players[G.dealIndex];
     UI.show("screen-deal");
-    $("deal-count").textContent = (G.dealIndex + 1) + " / " + s.players.length;
+    $("deal-count").textContent = "Joueur " + (G.dealIndex + 1) + " sur " + s.players.length;
     $("deal-name").textContent = p.name;
     UI.fillCard("card", Engine.privateView(s, p.id), s.config);
-    cardSeen = false;
-    $("card").classList.remove("open");
-    $("deal-next").disabled = true;
-    $("deal-next").textContent = (G.dealIndex === s.players.length - 1) ? "Commencer la partie" : "Suivant";
+    cardOpen = false;
+    UI.showSecret("card", false);
+    $("deal-toggle").textContent = "Voir mon mot";
     $("deal-note").textContent = "Personne d'autre ne doit regarder l'écran.";
   }
 
   function bindDeal(){
-    UI.bindHoldCard($("card"), function(){
-      if (cardSeen) return;
-      cardSeen = true;
-      $("deal-next").disabled = false;
-      $("deal-note").textContent = "Relâchez, puis passez le téléphone.";
-    });
-    $("deal-next").addEventListener("click", function(){
+    $("deal-toggle").addEventListener("click", function(){
       if (!G || !G.state) return;
-      $("card").classList.remove("open");
+      if (!cardOpen){
+        cardOpen = true;
+        UI.showSecret("card", true);
+        var last = G.dealIndex === G.state.players.length - 1;
+        $("deal-toggle").textContent = last ? "Cacher et commencer la partie" : "Cacher et passer au suivant";
+        $("deal-note").textContent = "Mémorisez votre mot, puis cachez-le avant de passer le téléphone.";
+        return;
+      }
+      UI.showSecret("card", false);
+      cardOpen = false;
       if (G.dealIndex < G.state.players.length - 1){ G.dealIndex++; save(); renderDeal(); }
       else { Engine.continueGame(G.state); G.screen = "play"; render(); }
     });

@@ -22,7 +22,7 @@
   var meta = null, members = {}, game = null, priv = null, scores = {};
   var full = null, fullLoaded = false, isHost = false, offset = 0;
   var subs = [], hostSubs = [], tickHandle = null, hostWatch = null, pending = [];
-  var showingCard = false, cardSeen = false, connectedRef = null, connectedCb = null;
+  var showingCard = false, cardOpen = false, connectedRef = null, connectedCb = null;
 
   function available(){
     return typeof firebase !== "undefined" && !!global.FIREBASE_CONFIG &&
@@ -300,7 +300,7 @@
       updates["private/" + p.id] = Engine.privateView(full, p.id);
       if (!scores[p.id]) updates["scores/" + p.id] = { name:p.name, pts:0 };
     });
-    showingCard = false; cardSeen = false;
+    showingCard = false; cardOpen = false;
     UI.toast("lobby-toast", "");
     roomRef.update(updates)
       .catch(function(e){ UI.toast("lobby-toast", "Lancement refusé : " + (e.code || e.message)); });
@@ -376,7 +376,7 @@
   function renderLobby(){
     UI.show("screen-lobby");
     var playing = meta.status === "playing";
-    $("lobby-status").textContent = playing ? "partie en cours" : "ouvert";
+    $("lobby-status").textContent = playing ? "Partie en cours" : "Salon ouvert";
     $("lobby-code").textContent = code;
     var list = $("lobby-members"); UI.clear(list);
     var ids = Object.keys(members).sort(function(a,b){ return (members[a].joinedAt || 0) - (members[b].joinedAt || 0); });
@@ -404,6 +404,8 @@
     }
   }
 
+  /* Carte : « Voir mon mot » affiche le mot ; « Cacher et continuer » le masque et
+     signale que le joueur est prêt (distribution) ou revient à la partie (relecture). */
   function renderCard(g){
     UI.show("screen-card");
     $("mycard-round").textContent = (meta && meta.manche) || 1;
@@ -412,29 +414,33 @@
     else {
       $("mycard-word").textContent = "…"; $("mycard-sub").textContent = "Chargement de votre carte."; $("mycard-kicker").textContent = "";
     }
+    UI.showSecret("mycard", cardOpen);
     var deal = g.phase === "deal";
-    var ready = (g.ready || {})[uid];
+    var ready = !!(g.ready || {})[uid];
     var alive = g.players.filter(function(p){ return p.alive; });
     var readyCount = alive.filter(function(p){ return (g.ready || {})[p.id]; }).length;
-    $("mycard-ready").hidden = !deal;
-    $("mycard-ready").disabled = !cardSeen || !!ready || !priv;
-    $("mycard-ready").textContent = ready ? "Prêt, en attente des autres" : "Je suis prêt";
+    var toggle = $("mycard-toggle");
+    toggle.disabled = !priv;
+    if (!cardOpen) toggle.textContent = "Voir mon mot";
+    else if (!deal) toggle.textContent = "Cacher et revenir à la partie";
+    else toggle.textContent = ready ? "Cacher" : "Cacher et continuer";
     $("mycard-status").textContent = deal
-      ? readyCount + " / " + alive.length + " joueurs prêts. Maintenez la carte pour lire votre mot, puis validez."
-      : "Maintenez la carte pour relire votre mot.";
+      ? (ready ? "Vous êtes prêt. " : "") + readyCount + " / " + alive.length + " joueurs prêts."
+      : "Personne ne doit voir votre écran.";
     $("mycard-force").hidden = !(deal && isHost && readyCount < alive.length);
-    $("mycard-back").hidden = deal;
   }
 
   function bindScreens(){
-    UI.bindHoldCard($("mycard"), function(){
-      if (cardSeen) return;
-      cardSeen = true;
-      if (game && game.phase === "deal") $("mycard-ready").disabled = !!(game.ready || {})[uid];
+    $("mycard-toggle").addEventListener("click", function(){
+      if (!game) return;
+      if (!cardOpen){ cardOpen = true; render(); return; }
+      cardOpen = false;
+      if (game.phase === "deal"){
+        if (!(game.ready || {})[uid]) dispatch("ready");
+        render();
+      } else { showingCard = false; render(); }
     });
-    $("mycard-ready").addEventListener("click", function(){ dispatch("ready"); $("mycard-ready").disabled = true; });
     $("mycard-force").addEventListener("click", function(){ hostDo(function(){ Engine.continueGame(full); }); });
-    $("mycard-back").addEventListener("click", function(){ showingCard = false; render(); });
     $("lobby-start").addEventListener("click", startGame);
     $("lobby-leave").addEventListener("click", leave);
   }

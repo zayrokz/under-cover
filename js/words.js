@@ -4,12 +4,23 @@
    Ce fichier ne contient que des données. Il est chargé avant le reste
    de l'application et expose l'objet global WORDS.
 
+   NIVEAU DE DIFFICULTÉ — valable dans TOUS les groupes
+   Un duo s'écrit ["Mot A","Mot B"] ou ["Mot A","Mot B", niveau] avec
+   niveau = 1 (facile), 2 (intermédiaire) ou 3 (hardcore).
+   Un duo étiqueté ne sort qu'à son niveau. Un duo sans niveau sort à
+   tous les niveaux. Si un groupe n'a aucun duo du niveau choisi, tous
+   ses duos restent proposés.
+   Exemples : ["Luffy","Ace",2]   ["Luffy","Zoro",1]   ["Sabo","Ace",3]
+
    1. SERIES     : un objet par univers (anime). Ajoutez un duo avec
-                   ["Nom A","Nom B"]. Pour créer une nouvelle série,
-                   copiez un bloc entier et changez id, label et tint.
+                   ["Nom A","Nom B"] ou ["Nom A","Nom B", niveau].
+                   Pour créer une nouvelle série, copiez un bloc entier
+                   et changez id, label et tint.
    2. CROSSOVER  : duos de personnages qui se ressemblent mais viennent
                    d'œuvres différentes. Format :
-                   ["Nom A","Série A","Nom B","Série B"]
+                   ["Nom A","Série A","Nom B","Série B"] ou avec un
+                   cinquième élément pour le niveau :
+                   ["Nom A","Série A","Nom B","Série B", 3]
    3. GENERAL    : duos de mots français courants, format
                    ["Mot A","Mot B", niveau] où niveau vaut
                    1 (facile), 2 (intermédiaire) ou 3 (hardcore).

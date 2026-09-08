@@ -52,6 +52,8 @@ Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « 
 
 - 3 joueurs minimum, 20 maximum. Civils, Undercover (1 à N) et Mr White (0 à N) ; les civils doivent rester majoritaires.
 - Tour de description dans l'ordre affiché, avec minuteur optionnel (0 à 180 s). Le mot secret ne peut pas apparaître dans une description.
+- Premier vote au choix : dès le premier tour de description, ou seulement après deux tours. Ensuite, on vote après chaque tour.
+- Carte secrète à bouton : « Voir mon mot » affiche le mot, « Cacher et passer » le masque avant de passer le téléphone (ou de se déclarer prêt en ligne).
 - Vote secret, un vote par joueur (un second vote remplace le premier). Le vote se clôt quand tout le monde a voté ; en ligne, l'hôte peut le clore sans attendre les absents.
 - Égalité : au choix « second vote entre ex æquo, puis personne n'est éliminé » ou « personne n'est éliminé ».
 - Mr White éliminé propose un mot : s'il trouve celui des civils, les intrus gagnent aussitôt (désactivable).
@@ -64,7 +66,7 @@ Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « 
 | Fichier | Rôle |
 | --- | --- |
 | `index.html` | Tous les écrans (accueil, configuration, salon, cartes, partie, fin, paramètres, éditeur) |
-| `css/style.css` | Thème sombre/clair |
+| `css/style.css` | Thème sombre/clair, mise en page mobile et bureau (deux colonnes à partir de 960 px) |
 | `js/words.js` | **Banque de mots** : 472 paires « Tout public » étiquetées par niveau, 19 séries d'anime, 169 duos croisés, 4 thèmes |
 | `js/wordbank.js` | Tirage d'une paire selon la sélection et la difficulté |
 | `js/engine.js` | Moteur de jeu pur (rôles, tours, votes, égalités, Mr White, victoire, départs) |
@@ -76,11 +78,15 @@ Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « 
 | `firebase-config.js` | Clés Firebase (à remplir) |
 | `database.rules.json` | Règles de sécurité de la Realtime Database |
 | `tests/engine.test.js` | Tests du moteur |
+| `tools/serve.js` | Serveur statique minimal (utilisé par Render via `npm start`) |
+| `tools/mock-firebase.js` | Faux Firebase en mémoire pour tester le mode en ligne sans clés |
 | `legacy/service-special.html` | Version d'origine, conservée pour référence |
 
 ## Ajouter des mots
 
-Modifiez `js/words.js` : une paire « Tout public » s'écrit `["Mot A","Mot B", niveau]` avec un niveau de 1 (facile) à 3 (hardcore). L'éditeur intégré permet aussi d'ajouter des duos depuis l'application ; ils sont conservés sur l'appareil et exportables sous forme de code à coller dans le fichier.
+Modifiez `js/words.js`. Dans n'importe quel groupe (thème, anime ou duo croisé), une paire s'écrit `["Mot A","Mot B"]` ou `["Mot A","Mot B", niveau]` avec un niveau de 1 (facile) à 3 (hardcore). Un duo étiqueté ne sort qu'à son niveau ; un duo sans niveau sort à tous les niveaux. Pour un duo croisé, le niveau est le cinquième élément : `["Nom A","Série A","Nom B","Série B", 3]`.
+
+L'éditeur intégré (« Ajouter des mots » sur l'accueil) permet aussi d'ajouter des duos, avec leur niveau, depuis l'application ; ils sont conservés sur l'appareil et exportables sous forme de code à coller dans le fichier.
 
 ## Tests
 

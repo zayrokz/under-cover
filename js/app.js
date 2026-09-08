@@ -8,18 +8,13 @@
   /* ---------- réglages persistants ---------- */
   var DEFAULT_RULES = { whiteGuess:true, whiteNotFirst:true, announce:true, emblem:true, tieWins:true, hideRoles:false };
   var DEFAULT_POINTS = { civilAlive:3, civilDead:2, undercover:4, white:6, whiteGuess:8 };
-  var DIFF_PRESETS = {
-    1:{ announce:true,  emblem:true,  whiteGuess:true,  tieWins:false, hideRoles:false },
-    2:{ announce:true,  emblem:true,  whiteGuess:true,  tieWins:true,  hideRoles:false },
-    3:{ announce:false, emblem:false, whiteGuess:false, tieWins:true,  hideRoles:true }
-  };
-  var DIFF_LABELS = { 1:"Facile", 2:"Intermédiaire", 3:"Hardcore" };
+  var DIFF_LABELS = { 1:"facile", 2:"intermédiaire", 3:"hardcore" };
 
   var SETTINGS = {
     appearance:"auto", diff:2,
     rules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
     points: JSON.parse(JSON.stringify(DEFAULT_POINTS)),
-    undercover:1, white:0, timer:0, tieRule:"revote",
+    undercover:1, white:0, timer:0, tieRule:"revote", firstVoteAfter:1,
     sel:{ customWords:false, mode:"theme", serieId:"random", themeId:"random", custom:["",""] },
     players:[]
   };
@@ -35,9 +30,11 @@
 
   var ACTIVE = null;              /* contrôleur qui possède l'écran de partie : Local ou Online */
   var configCount = function(){ return SETTINGS.players.length; };
+  var returnScreen = null;        /* écran à retrouver en quittant les paramètres ou l'éditeur */
 
   function getConfig(){
-    var c = { undercover:SETTINGS.undercover, white:SETTINGS.white, timer:SETTINGS.timer, tieRule:SETTINGS.tieRule, points:SETTINGS.points };
+    var c = { undercover:SETTINGS.undercover, white:SETTINGS.white, timer:SETTINGS.timer, tieRule:SETTINGS.tieRule,
+      firstVoteAfter:SETTINGS.firstVoteAfter, points:SETTINGS.points };
     Object.keys(SETTINGS.rules).forEach(function(k){ c[k] = SETTINGS.rules[k]; });
     return c;
   }
@@ -66,18 +63,21 @@
     if (panel.parentNode !== slot) slot.appendChild(panel);
   }
   function setConfigCount(fn){ configCount = fn; }
+  function pressGroup(selector, attr, value){
+    var btns = document.querySelectorAll(selector);
+    for (var i=0;i<btns.length;i++) btns[i].setAttribute("aria-pressed", String(btns[i].getAttribute(attr) === String(value)));
+  }
 
   function renderConfig(){
     $("out-undercover").textContent = SETTINGS.undercover;
     $("out-white").textContent = SETTINGS.white;
     $("out-timer").textContent = SETTINGS.timer ? SETTINGS.timer + " s" : "Aucun";
-    var ties = document.querySelectorAll("[data-tie]");
-    for (var i=0;i<ties.length;i++) ties[i].setAttribute("aria-pressed", String(ties[i].getAttribute("data-tie") === SETTINGS.tieRule));
-    var diffs = document.querySelectorAll("[data-diff]");
-    for (var j=0;j<diffs.length;j++) diffs[j].setAttribute("aria-pressed", String(parseInt(diffs[j].getAttribute("data-diff"),10) === SETTINGS.diff));
+    pressGroup("[data-tie]", "data-tie", SETTINGS.tieRule);
+    pressGroup("[data-first-vote]", "data-first-vote", SETTINGS.firstVoteAfter);
+    pressGroup("[data-diff]", "data-diff", SETTINGS.diff);
     var st = WordBank.stats();
-    $("diff-note").textContent = "Niveau " + DIFF_LABELS[SETTINGS.diff].toLowerCase() + ". Le filtrage par niveau s'applique aux " + st.tagged +
-      " duos étiquetés du thème « Tout public ». Les autres groupes restent proposés à tous les niveaux, mais les règles d'assistance changent.";
+    $("diff-note").textContent = "Niveau " + DIFF_LABELS[SETTINGS.diff] + ". " + st.tagged + " duos sur " + st.total +
+      " portent un niveau dans js/words.js et ne sortent qu'à leur niveau ; les autres sortent toujours.";
 
     var n = configCount(), imp = SETTINGS.undercover + SETTINGS.white, civ = n - imp, tally = $("tally-config");
     if (n === 0){ tally.textContent = "En attente de joueurs."; tally.className = "tally"; }
@@ -88,8 +88,7 @@
     $("tab-custom").setAttribute("aria-pressed", String(SETTINGS.sel.customWords));
     $("pair-inputs").hidden = !SETTINGS.sel.customWords;
     $("theme-zone").hidden = SETTINGS.sel.customWords;
-    var modes = document.querySelectorAll("[data-mode]");
-    for (var k=0;k<modes.length;k++) modes[k].setAttribute("aria-pressed", String(modes[k].getAttribute("data-mode") === SETTINGS.sel.mode));
+    pressGroup("[data-mode]", "data-mode", SETTINGS.sel.mode);
     renderSeries();
     $("theme-note").textContent = WordBank.describe(getSelection(), SETTINGS.diff);
     var err = problem(configCount());
@@ -118,6 +117,12 @@
     list.forEach(function(g){ mk(g.id, g.label, false); });
   }
 
+  function onGroup(selector, attr, fn){
+    var btns = document.querySelectorAll(selector);
+    for (var i=0;i<btns.length;i++){
+      btns[i].addEventListener("click", function(){ fn(this.getAttribute(attr)); saveSettings(); renderConfig(); });
+    }
+  }
   function bindConfig(){
     var steps = document.querySelectorAll("[data-step]");
     for (var i=0;i<steps.length;i++){
@@ -128,33 +133,17 @@
         saveSettings(); renderConfig();
       });
     }
-    var ties = document.querySelectorAll("[data-tie]");
-    for (var t=0;t<ties.length;t++){
-      ties[t].addEventListener("click", function(){ SETTINGS.tieRule = this.getAttribute("data-tie"); saveSettings(); renderConfig(); });
-    }
-    var diffs = document.querySelectorAll("[data-diff]");
-    for (var j=0;j<diffs.length;j++){
-      diffs[j].addEventListener("click", function(){ applyDifficulty(parseInt(this.getAttribute("data-diff"),10)); });
-    }
+    onGroup("[data-tie]", "data-tie", function(v){ SETTINGS.tieRule = v; });
+    onGroup("[data-first-vote]", "data-first-vote", function(v){ SETTINGS.firstVoteAfter = parseInt(v,10); });
+    onGroup("[data-diff]", "data-diff", function(v){ SETTINGS.diff = parseInt(v,10); });
+    onGroup("[data-mode]", "data-mode", function(v){ SETTINGS.sel.mode = v; });
     $("tab-random").addEventListener("click", function(){ SETTINGS.sel.customWords = false; saveSettings(); renderConfig(); });
     $("tab-custom").addEventListener("click", function(){ SETTINGS.sel.customWords = true; saveSettings(); renderConfig(); });
-    var modes = document.querySelectorAll("[data-mode]");
-    for (var k=0;k<modes.length;k++){
-      modes[k].addEventListener("click", function(){ SETTINGS.sel.mode = this.getAttribute("data-mode"); saveSettings(); renderConfig(); });
-    }
     $("word-civil").addEventListener("input", renderConfig);
     $("word-under").addEventListener("input", renderConfig);
   }
-  function applyDifficulty(level){
-    SETTINGS.diff = level;
-    var preset = DIFF_PRESETS[level];
-    Object.keys(preset).forEach(function(k){ SETTINGS.rules[k] = preset[k]; });
-    saveSettings();
-    renderConfig();
-    renderRules();
-  }
 
-  /* ---------- accueil ---------- */
+  /* ---------- navigation ---------- */
   function goHome(){
     UI.stopTimer();
     UI.show("screen-home");
@@ -167,7 +156,7 @@
     var ok = Online.available();
     $("home-create").disabled = !ok;
     $("home-join").disabled = !ok;
-    $("home-online-note").textContent = ok ? "Le salon reste ouvert tant qu'un joueur y est connecté. Chaque joueur voit sa carte sur son propre téléphone." : Online.unavailableReason();
+    $("home-online-note").textContent = ok ? "Chaque joueur voit sa carte sur son propre téléphone. Le salon reste ouvert tant qu'un joueur y est connecté." : Online.unavailableReason();
     var savedName = Store.get("name", "");
     if (savedName && !$("home-name").value) $("home-name").value = savedName;
   }
@@ -178,7 +167,27 @@
     renderPlayers();
     renderConfig();
   }
+  function openSettings(scrollToRules){
+    returnScreen = UI.currentScreen();
+    renderRules();
+    UI.show("screen-settings");
+    if (scrollToRules){ setTimeout(function(){ $("rules-card").scrollIntoView({ behavior:"smooth", block:"start" }); }, 30); }
+  }
+  function goBack(){
+    var to = returnScreen; returnScreen = null;
+    if (to === "screen-setup"){ showSetup(); return; }
+    if ((to === "screen-play" || to === "screen-end" || to === "screen-lobby" || to === "screen-card" || to === "screen-deal") && ACTIVE && ACTIVE.state && ACTIVE.state()){
+      ACTIVE.render(); return;
+    }
+    goHome();
+  }
   function bindHome(){
+    $("top-back").addEventListener("click", function(){
+      var cur = UI.currentScreen();
+      if (cur === "screen-settings" || cur === "screen-editor") goBack(); else goHome();
+    });
+    $("top-settings").addEventListener("click", function(){ if (UI.currentScreen() !== "screen-settings") openSettings(false); });
+    $("open-rules").addEventListener("click", function(){ openSettings(true); });
     $("home-local").addEventListener("click", showSetup);
     $("home-resume-local").addEventListener("click", function(){ if (!Local.resume()) goHome(); });
     $("home-resume-online").addEventListener("click", function(){
@@ -205,8 +214,7 @@
     $("home-join").addEventListener("click", joinNow);
     $("home-join-code").addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); joinNow(); } });
     $("home-join-code").addEventListener("input", function(){ this.value = this.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0,4); });
-    $("open-settings").addEventListener("click", function(){ renderRules(); UI.show("screen-settings"); });
-    $("open-editor").addEventListener("click", function(){ renderDest(); renderAdded(); UI.show("screen-editor"); });
+    $("open-editor").addEventListener("click", function(){ returnScreen = UI.currentScreen(); renderDest(); renderAdded(); UI.show("screen-editor"); });
   }
 
   /* ---------- joueurs (mode local) ---------- */
@@ -221,6 +229,7 @@
       chips.appendChild(c);
     });
     $("players-empty").hidden = SETTINGS.players.length > 0;
+    $("players-count").textContent = SETTINGS.players.length ? SETTINGS.players.length : "";
   }
   function addPlayer(){
     var input = $("player-input");
@@ -243,7 +252,6 @@
       if (err){ UI.toast("setup-toast", err); return; }
       Local.start(SETTINGS.players.slice());
     });
-    $("setup-back").addEventListener("click", goHome);
   }
 
   /* ---------- écran de partie : boutons partagés ---------- */
@@ -284,7 +292,7 @@
         grid.appendChild(b);
       });
       box.appendChild(grid);
-      var cancel = UI.el("button", "btn-ghost", "Annuler"); cancel.type = "button";
+      var cancel = UI.el("button", "btn ghost small", "Annuler"); cancel.type = "button"; cancel.style.marginTop = "10px";
       cancel.addEventListener("click", function(){ UI.clear(slot); });
       box.appendChild(cancel);
       slot.appendChild(box);
@@ -303,15 +311,14 @@
     else light = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
     document.body.classList.toggle("light", light);
     var meta = document.querySelector('meta[name=theme-color]');
-    if (meta) meta.setAttribute("content", light ? "#F5F2EA" : "#0E1420");
-    var btns = document.querySelectorAll("[data-appearance]");
-    for (var i=0;i<btns.length;i++) btns[i].setAttribute("aria-pressed", String(btns[i].getAttribute("data-appearance") === SETTINGS.appearance));
+    if (meta) meta.setAttribute("content", light ? "#F3F4F7" : "#0F1115");
+    pressGroup("[data-appearance]", "data-appearance", SETTINGS.appearance);
   }
   var RULE_DEFS = [
     { key:"whiteGuess", label:"Mr White peut deviner", note:"Un essai au moment de son élimination" },
     { key:"whiteNotFirst", label:"Mr White jamais premier", note:"Il ne parle jamais en ouverture du tour" },
     { key:"announce", label:"Annoncer la catégorie", note:"La série ou la catégorie figure sur les cartes" },
-    { key:"emblem", label:"Afficher le médaillon", note:"Pastille illustrée au-dessus du mot" },
+    { key:"emblem", label:"Afficher le médaillon", note:"Pastille au-dessus du mot" },
     { key:"tieWins", label:"Les intrus gagnent à égalité", note:"Sinon ils doivent être strictement plus nombreux" },
     { key:"hideRoles", label:"Cacher les rôles éliminés", note:"Le camp de l'éliminé n'est révélé qu'à la fin" }
   ];
@@ -325,22 +332,20 @@
   function renderRules(){
     var box = $("rules-list"); UI.clear(box);
     RULE_DEFS.forEach(function(def){
-      var row = UI.el("div", "stepper");
-      var lab = UI.el("span", "stepper-label", def.label);
-      lab.appendChild(UI.el("span", "stepper-note", def.note));
-      var b = UI.el("button", "btn-mini", SETTINGS.rules[def.key] ? "Activé" : "Désactivé"); b.type = "button";
+      var row = UI.el("div", "setting");
+      var lab = UI.el("span", "setting-label", def.label);
+      lab.appendChild(UI.el("span", "setting-note", def.note));
+      var b = UI.el("button", "toggle", SETTINGS.rules[def.key] ? "Activé" : "Désactivé"); b.type = "button";
       b.setAttribute("aria-pressed", String(!!SETTINGS.rules[def.key]));
-      b.style.borderColor = SETTINGS.rules[def.key] ? "var(--amber)" : "var(--edge)";
-      b.style.color = SETTINGS.rules[def.key] ? "var(--amber-soft)" : "var(--muted)";
       b.addEventListener("click", function(){ SETTINGS.rules[def.key] = !SETTINGS.rules[def.key]; saveSettings(); renderRules(); });
       row.appendChild(lab); row.appendChild(b);
       box.appendChild(row);
     });
     var pbox = $("points-list"); UI.clear(pbox);
     POINT_DEFS.forEach(function(def){
-      var row = UI.el("div", "stepper");
-      var lab = UI.el("span", "stepper-label", def.label);
-      var ctrl = UI.el("span", "stepper-ctrl");
+      var row = UI.el("div", "setting");
+      var lab = UI.el("span", "setting-label", def.label);
+      var ctrl = UI.el("span", "stepper");
       var minus = UI.el("button", null, "−"); minus.type = "button"; minus.setAttribute("aria-label", "Moins un point pour " + def.label);
       var out = UI.el("output", null, SETTINGS.points[def.key]);
       var plus = UI.el("button", null, "+"); plus.type = "button"; plus.setAttribute("aria-label", "Un point de plus pour " + def.label);
@@ -364,16 +369,13 @@
     $("rules-reset").addEventListener("click", function(){
       SETTINGS.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
       SETTINGS.points = JSON.parse(JSON.stringify(DEFAULT_POINTS));
-      SETTINGS.diff = 2;
       saveSettings(); renderRules(); renderConfig();
     });
-    $("settings-back").addEventListener("click", function(){
-      if (ACTIVE && ACTIVE.state && ACTIVE.state() && UI.currentScreen() === "screen-settings") ACTIVE.render(); else goHome();
-    });
+    $("settings-back").addEventListener("click", goBack);
   }
 
   /* ---------- éditeur de duos (ajouts conservés sur l'appareil) ---------- */
-  var ED = { dest:"theme" };
+  var ED = { dest:"theme", level:0 };
   var ADDED = Store.get("added", []);
   function hashCode(s){ var h = 0; for (var i=0;i<s.length;i++){ h = (h * 31 + s.charCodeAt(i)) | 0; } return Math.abs(h); }
   function slug(label){
@@ -382,12 +384,16 @@
     return id;
   }
   function tintFrom(label){ return "hsl(" + (hashCode(Engine.norm(label)) % 360) + ", 45%, 55%)"; }
+  function pairOf(item){
+    if (item.kind === "cross"){ var c = [item.a, item.sa, item.b, item.sb]; if (item.level) c.push(item.level); return c; }
+    var p = [item.a, item.b]; if (item.level) p.push(item.level); return p;
+  }
   function applyAdded(item){
-    if (item.kind === "cross"){ WORDS.CROSSOVER.push([item.a, item.sa, item.b, item.sb]); return; }
+    if (item.kind === "cross"){ WORDS.CROSSOVER.push(pairOf(item)); return; }
     var list = item.kind === "serie" ? WORDS.SERIES : WORDS.THEMES;
     var group = WordBank.byId(list, item.groupId);
     if (!group){ group = { id:item.groupId, label:item.label, tint:tintFrom(item.label), pairs:[] }; list.push(group); }
-    group.pairs.push([item.a, item.b]);
+    group.pairs.push(pairOf(item));
   }
   function unapplyAdded(item){
     if (item.kind === "cross"){
@@ -404,28 +410,28 @@
   function saveAdded(){ Store.set("added", ADDED); }
 
   function mkSelect(id, list, withNew, label){
-    var wrap = UI.el("div");
-    var lab = UI.el("label", "field-label", label); lab.setAttribute("for", id);
+    var wrap = UI.el("label", "field");
+    wrap.appendChild(UI.el("span", null, label));
     var sel = UI.el("select"); sel.id = id;
     list.forEach(function(g){ var o = UI.el("option", null, g.label); o.value = g.id; sel.appendChild(o); });
     if (withNew){ var o2 = UI.el("option", null, "— Créer un nouveau groupe —"); o2.value = "__new__"; sel.appendChild(o2); }
-    wrap.appendChild(lab); wrap.appendChild(sel);
+    wrap.appendChild(sel);
     return wrap;
   }
   function renderDest(){
     var box = $("dest-fields"); UI.clear(box);
     if (ED.dest === "serie" || ED.dest === "theme"){
       var list = ED.dest === "serie" ? WORDS.SERIES : WORDS.THEMES;
-      box.appendChild(mkSelect("ed-group", list, true, ED.dest === "serie" ? "Série" : "Thème"));
-      var nw = UI.el("div"); nw.id = "ed-new-wrap"; nw.hidden = true;
-      var lab = UI.el("label", "field-label", "Nom du nouveau groupe"); lab.setAttribute("for", "ed-new");
+      box.appendChild(mkSelect("ed-group", list, true, ED.dest === "serie" ? "Anime" : "Thème"));
+      var nw = UI.el("label", "field"); nw.id = "ed-new-wrap"; nw.hidden = true;
+      nw.appendChild(UI.el("span", null, "Nom du nouveau groupe"));
       var inp = UI.el("input"); inp.type = "text"; inp.id = "ed-new"; inp.maxLength = 28; inp.autocomplete = "off";
-      nw.appendChild(lab); nw.appendChild(inp);
+      nw.appendChild(inp);
       box.appendChild(nw);
       $("ed-group").addEventListener("change", function(){ $("ed-new-wrap").hidden = (this.value !== "__new__"); });
     } else {
-      box.appendChild(mkSelect("ed-sa", WORDS.SERIES, false, "Série du premier nom"));
-      box.appendChild(mkSelect("ed-sb", WORDS.SERIES, false, "Série du second nom"));
+      box.appendChild(mkSelect("ed-sa", WORDS.SERIES, false, "Anime du premier nom"));
+      box.appendChild(mkSelect("ed-sb", WORDS.SERIES, false, "Anime du second nom"));
     }
   }
   function renderAdded(){
@@ -435,22 +441,30 @@
     ADDED.forEach(function(item, idx){
       var li = UI.el("li");
       var left = UI.el("span", null, item.a + " / " + item.b);
-      left.appendChild(UI.el("small", null, item.kind === "cross" ? (item.sa + " · " + item.sb) : item.label));
-      var del = UI.el("button", "btn-mini", "Retirer"); del.type = "button";
+      var where = item.kind === "cross" ? (item.sa + " · " + item.sb) : item.label;
+      left.appendChild(UI.el("small", null, where + (item.level ? " · " + DIFF_LABELS[item.level] : "")));
+      var del = UI.el("button", "btn ghost small inline", "Retirer"); del.type = "button";
       del.addEventListener("click", function(){ unapplyAdded(item); ADDED.splice(idx,1); saveAdded(); renderAdded(); renderDest(); });
       li.appendChild(left); li.appendChild(del);
       list.appendChild(li);
     });
   }
   function esc(s){ return String(s).replace(/"/g, '\\"'); }
+  function codeOf(item){
+    return "[" + pairOf(item).map(function(x){ return typeof x === "number" ? String(x) : '"' + esc(x) + '"'; }).join(",") + "],";
+  }
   function bindEditor(){
     var destBtns = document.querySelectorAll("[data-dest]");
     for (var i=0;i<destBtns.length;i++){
       destBtns[i].addEventListener("click", function(){
         ED.dest = this.getAttribute("data-dest");
-        for (var k=0;k<destBtns.length;k++) destBtns[k].setAttribute("aria-pressed", String(destBtns[k].getAttribute("data-dest") === ED.dest));
+        pressGroup("[data-dest]", "data-dest", ED.dest);
         UI.toast("ed-toast", ""); renderDest();
       });
+    }
+    var lvBtns = document.querySelectorAll("[data-ed-level]");
+    for (var l=0;l<lvBtns.length;l++){
+      lvBtns[l].addEventListener("click", function(){ ED.level = parseInt(this.getAttribute("data-ed-level"),10); pressGroup("[data-ed-level]", "data-ed-level", ED.level); });
     }
     $("ed-add").addEventListener("click", function(){
       var a = $("ed-a").value.trim().replace(/\s+/g," "), b = $("ed-b").value.trim().replace(/\s+/g," ");
@@ -459,8 +473,8 @@
       var item;
       if (ED.dest === "cross"){
         var sa = WordBank.byId(WORDS.SERIES, $("ed-sa").value), sb = WordBank.byId(WORDS.SERIES, $("ed-sb").value);
-        if (!sa || !sb || sa === sb){ UI.toast("ed-toast", "Choisissez deux séries différentes."); return; }
-        item = { kind:"cross", a:a, b:b, sa:sa.label, sb:sb.label };
+        if (!sa || !sb || sa === sb){ UI.toast("ed-toast", "Choisissez deux animes différents."); return; }
+        item = { kind:"cross", a:a, b:b, sa:sa.label, sb:sb.label, level:ED.level || 0 };
       } else {
         var isSerie = ED.dest === "serie", list = isSerie ? WORDS.SERIES : WORDS.THEMES;
         var val = $("ed-group").value, group;
@@ -470,7 +484,7 @@
           group = { id:slug(label), label:label };
         } else group = WordBank.byId(list, val);
         if (!group){ UI.toast("ed-toast", "Groupe introuvable."); return; }
-        item = { kind:isSerie ? "serie" : "theme", a:a, b:b, groupId:group.id, label:group.label };
+        item = { kind:isSerie ? "serie" : "theme", a:a, b:b, groupId:group.id, label:group.label, level:ED.level || 0 };
       }
       applyAdded(item); ADDED.push(item); saveAdded();
       $("ed-a").value = ""; $("ed-b").value = ""; UI.toast("ed-toast", "Duo ajouté.", true); $("ed-a").focus();
@@ -480,9 +494,9 @@
       if (!ADDED.length){ UI.toast("ed-toast", "Aucun ajout à exporter."); return; }
       var groups = {}, cross = [], out = [];
       ADDED.forEach(function(it){
-        if (it.kind === "cross"){ cross.push('    ["' + esc(it.a) + '","' + esc(it.sa) + '","' + esc(it.b) + '","' + esc(it.sb) + '"],'); return; }
+        if (it.kind === "cross"){ cross.push("    " + codeOf(it)); return; }
         var key = it.kind + "|" + it.groupId + "|" + it.label;
-        (groups[key] = groups[key] || []).push('["' + esc(it.a) + '","' + esc(it.b) + '"],');
+        (groups[key] = groups[key] || []).push(codeOf(it));
       });
       Object.keys(groups).forEach(function(key){
         var parts = key.split("|"), kind = parts[0], gid = parts[1], label = parts[2];
@@ -507,7 +521,7 @@
       try { if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(done, function(){ ta.select(); }); return; } } catch(e){}
       ta.select(); btn.textContent = "Sélectionné : copiez manuellement";
     });
-    $("ed-back").addEventListener("click", goHome);
+    $("ed-back").addEventListener("click", goBack);
   }
 
   /* ---------- amorçage ---------- */
