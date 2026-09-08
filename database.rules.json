@@ -1,0 +1,50 @@
+{
+  "rules": {
+    "rooms": {
+      "$code": {
+        "meta": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid || root.child('rooms/' + $code + '/members/' + data.child('hostId').val() + '/connected').val() != true)",
+          ".validate": "newData.hasChildren(['code', 'hostId', 'status', 'createdAt']) && newData.child('code').val() == $code"
+        },
+        "members": {
+          ".read": "auth != null",
+          "$uid": {
+            ".write": "auth != null && (auth.uid == $uid || auth.uid == root.child('rooms/' + $code + '/meta/hostId').val())",
+            ".validate": "!newData.exists() || (newData.hasChildren(['name', 'joinedAt']) && newData.child('name').isString() && newData.child('name').val().length <= 24)"
+          }
+        },
+        "game": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()"
+        },
+        "scores": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()"
+        },
+        "history": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()"
+        },
+        "private": {
+          "$uid": {
+            ".read": "auth != null && auth.uid == $uid",
+            ".write": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()"
+          }
+        },
+        "full": {
+          ".read": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()",
+          ".write": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()"
+        },
+        "actions": {
+          ".read": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()",
+          ".write": "auth != null && auth.uid == root.child('rooms/' + $code + '/meta/hostId').val()",
+          "$id": {
+            ".write": "auth != null && (auth.uid == root.child('rooms/' + $code + '/meta/hostId').val() || (!data.exists() && newData.child('from').val() == auth.uid))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['from', 'type', 'at']) && newData.child('type').isString())"
+          }
+        }
+      }
+    }
+  }
+}

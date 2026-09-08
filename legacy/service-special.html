@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1420">
+<title>Service spécial — distribution des mots secrets</title>
+<style>
+  :root{
+    --ink:#0E1420; --ink-2:#161F2E; --edge:#28374C;
+    --text:#E9EDF3; --muted:#8B9AB0;
+    --amber:#E0A93B; --amber-soft:#F0CB7E; --alert:#D2603F; --green:#5CA37E;
+    --sunk:#0C121C; --faint:#5D6B7E; --dim:#55637A;
+    --card-a:#1A2433; --card-b:#121A26; --glow:#1B2637;
+    --disabled-bg:#2C3646; --disabled-fg:#6C7A8C;
+    --display:"Bricolage Grotesque","Avenir Next","Segoe UI",ui-sans-serif,system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --r:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(120% 70% at 50% -10%, var(--glow) 0%, transparent 60%), var(--ink);
+    color:var(--text);font-family:var(--body);-webkit-font-smoothing:antialiased;min-height:100dvh;
+  }
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);}
+  .wrap{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:28px 20px calc(32px + env(safe-area-inset-bottom));}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;}
+  .eyebrow b{color:var(--amber);font-weight:700;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,10vw,44px);line-height:.95;letter-spacing:-.02em;margin:0 0 12px;}
+  h2{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;}
+  .lede{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 26px;max-width:34ch;}
+
+  .block{background:var(--ink-2);border:1px solid var(--edge);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+  .row{display:flex;gap:8px;align-items:center;}
+  .grow{flex:1;min-width:0;}
+
+  input[type=text]{width:100%;padding:12px 14px;border-radius:10px;background:var(--sunk);border:1px solid var(--edge);color:var(--text);font-family:var(--body);font-size:16px;}
+  input[type=text]::placeholder{color:var(--faint);}
+  input[type=text]:focus-visible{outline:2px solid var(--amber);outline-offset:1px;}
+
+  button{font-family:var(--body);cursor:pointer;}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .btn{display:block;width:100%;padding:16px;border:0;border-radius:10px;background:var(--amber);color:#14181F;font-size:16px;font-weight:700;}
+  .btn:disabled{background:var(--disabled-bg);color:var(--disabled-fg);cursor:not-allowed;}
+  .btn-ghost{display:block;width:100%;padding:14px;border:1px solid var(--edge);border-radius:10px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;margin-top:10px;}
+  .btn-mini{padding:12px 16px;border:1px solid var(--edge);border-radius:10px;background:var(--sunk);color:var(--text);font-size:15px;font-weight:700;}
+  .btn-danger{background:var(--alert);color:#14181F;border:0;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:7px 8px 7px 12px;border-radius:999px;background:var(--sunk);border:1px solid var(--edge);font-size:14px;}
+  .chip button{border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;padding:2px 4px;border-radius:50%;}
+  .empty{color:var(--faint);font-size:14px;margin-top:12px;font-style:italic;}
+
+  .stepper{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
+  .stepper + .stepper{border-top:1px solid var(--edge);margin-top:6px;padding-top:12px;}
+  .stepper-label{font-size:15px;font-weight:600;}
+  .stepper-note{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px;}
+  .stepper-ctrl{display:flex;align-items:center;gap:4px;}
+  .stepper-ctrl button{width:38px;height:38px;border-radius:9px;border:1px solid var(--edge);background:var(--sunk);color:var(--text);font-size:20px;line-height:1;}
+  .stepper-ctrl output{font-family:var(--mono);font-size:17px;min-width:34px;text-align:center;display:inline-block;}
+  .tally{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--edge);}
+  .tally.bad{color:var(--alert);}
+
+  .tabs{display:flex;gap:6px;background:var(--sunk);border:1px solid var(--edge);border-radius:10px;padding:4px;}
+  .tabs button{flex:1;padding:10px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;}
+  .tabs button[aria-pressed=true]{background:var(--amber);color:#14181F;}
+
+  .modes{display:grid;gap:8px;margin-top:12px;}
+  .modes button{
+    display:block;width:100%;text-align:left;padding:12px 14px;border-radius:10px;
+    border:1px solid var(--edge);background:var(--sunk);color:var(--text);font-size:15px;font-weight:600;
+  }
+  .modes button span{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:3px;line-height:1.4;}
+  .modes button[aria-pressed=true]{border-color:var(--amber);background:rgba(224,169,59,.09);}
+  .modes button[aria-pressed=true] > b{color:var(--amber-soft);}
+
+  .series{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;}
+  .series button{padding:10px 8px;border-radius:9px;border:1px solid var(--edge);background:var(--sunk);color:var(--muted);font-size:12.5px;font-weight:600;}
+  .series button[aria-pressed=true]{border-color:var(--amber);color:var(--amber-soft);background:rgba(224,169,59,.09);}
+  .series button.wide{grid-column:1 / -1;}
+  .theme-note{font-family:var(--mono);font-size:11px;color:var(--faint);margin:12px 0 0;line-height:1.6;}
+
+  select{
+    width:100%;padding:12px 14px;border-radius:10px;background:var(--sunk);
+    border:1px solid var(--edge);color:var(--text);font-family:var(--body);font-size:16px;
+    -webkit-appearance:none;appearance:none;
+  }
+  select:focus-visible{outline:2px solid var(--amber);outline-offset:1px;}
+  textarea{
+    width:100%;min-height:180px;margin-top:12px;padding:12px;border-radius:10px;
+    background:var(--sunk);border:1px solid var(--edge);color:var(--amber-soft);
+    font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical;
+  }
+  .stack{display:grid;gap:10px;}
+  .pair-inputs{margin-top:12px;display:grid;gap:10px;}
+  .field-label{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;}
+
+  .handoff{text-align:center;margin-bottom:18px;}
+  .handoff .to{color:var(--muted);font-size:14px;margin:0 0 6px;}
+  .handoff .name{font-family:var(--display);font-weight:800;font-size:clamp(30px,9vw,40px);line-height:1;letter-spacing:-.02em;margin:0;}
+  .card{position:relative;width:100%;aspect-ratio:3/4;max-height:54dvh;border-radius:16px;border:1px solid var(--edge);overflow:hidden;
+    background:linear-gradient(160deg,var(--card-a) 0%,var(--card-b) 100%);display:block;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;}
+  .card:focus-visible{outline:2px solid var(--amber);outline-offset:3px;}
+  .card-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:22px;text-align:center;transition:opacity .18s ease, transform .18s ease;}
+  .seal{width:64px;height:64px;border-radius:50%;border:2px dashed var(--amber);display:flex;align-items:center;justify-content:center;color:var(--amber);font-family:var(--mono);font-size:11px;letter-spacing:.08em;}
+  .hint{color:var(--muted);font-size:15px;line-height:1.4;max-width:22ch;}
+  .card-back{opacity:0;transform:scale(.97);}
+  .card.open .card-front{opacity:0;transform:scale(1.03);}
+  .card.open .card-back{opacity:1;transform:scale(1);}
+  .emblem{width:88px;height:88px;border-radius:50%;border:2px solid var(--amber);overflow:hidden;
+    display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:29px;
+    color:var(--text);background:var(--sunk);flex:0 0 auto;}
+  .emblem img{width:100%;height:100%;object-fit:cover;display:block;}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+  .word{font-family:var(--display);font-weight:800;font-size:clamp(28px,9.5vw,46px);line-height:1.02;letter-spacing:-.02em;color:var(--amber-soft);overflow-wrap:anywhere;}
+  .word.white{color:var(--alert);}
+  .sub{color:var(--muted);font-size:14px;line-height:1.45;max-width:26ch;}
+  .deal-note{color:var(--faint);font-size:13px;text-align:center;margin:14px 0 18px;}
+
+  .order{list-style:none;margin:0;padding:0;counter-reset:s;}
+  .order li{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--edge);font-size:16px;}
+  .order li:last-child{border-bottom:0;}
+  .order li::before{counter-increment:s;content:counter(s,decimal-leading-zero);font-family:var(--mono);font-size:12px;color:var(--amber);min-width:22px;}
+  .order li.out{color:var(--dim);text-decoration:line-through;}
+  .order li.out::before{color:var(--dim);}
+
+  .people{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .person{padding:14px 12px;border-radius:10px;border:1px solid var(--edge);background:var(--sunk);color:var(--text);font-size:15px;font-weight:600;text-align:left;}
+  .person[aria-pressed=true]{border-color:var(--amber);background:rgba(224,169,59,.09);}
+  .person:disabled{opacity:.4;text-decoration:line-through;cursor:not-allowed;}
+
+  .confirm{margin-top:12px;padding:14px;border:1px solid var(--amber);border-radius:10px;background:rgba(224,169,59,.07);}
+  .confirm p{margin:0 0 12px;font-size:15px;}
+  .confirm .row button{flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;}
+
+  .verdict{border-radius:10px;padding:14px;margin-top:12px;font-size:15px;line-height:1.45;border:1px solid var(--edge);background:var(--sunk);}
+  .verdict strong{font-family:var(--display);font-size:18px;}
+  .verdict.civil strong{color:var(--green);}
+  .verdict.imposteur strong{color:var(--alert);}
+
+  .result-list{list-style:none;margin:0;padding:0;}
+  .result-list li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid var(--edge);font-size:16px;}
+  .result-list li:last-child{border-bottom:0;}
+  .result-list small{display:block;color:var(--muted);font-size:12px;margin-top:2px;}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;}
+  .tag.civil{color:var(--green);}
+  .tag.undercover{color:var(--amber);}
+  .tag.white{color:var(--alert);}
+
+  .banner{border-radius:var(--r);padding:20px;margin-bottom:16px;text-align:center;border:1px solid var(--edge);background:var(--ink-2);}
+  .banner .who{font-family:var(--display);font-weight:800;font-size:clamp(26px,8vw,34px);line-height:1;letter-spacing:-.02em;margin:6px 0 8px;}
+  .banner .why{color:var(--muted);font-size:14px;margin:0;line-height:1.45;}
+  .banner.civil .who{color:var(--green);}
+  .banner.imposteur .who{color:var(--alert);}
+
+  .toast{font-size:13px;color:var(--alert);margin-top:10px;min-height:18px;}
+  [hidden]{display:none !important;}
+  @media (prefers-reduced-motion: reduce){*{transition:none !important;}}
+
+  body.light{
+    --ink:#F5F2EA; --ink-2:#FFFFFF; --edge:#DDD6C7; --text:#1A2230; --muted:#5D6A7B;
+    --amber:#C4881C; --amber-soft:#8A5A0A; --alert:#B8452A; --green:#3D7C58;
+    --sunk:#F0ECE2; --faint:#8B94A1; --dim:#A8B0BB;
+    --card-a:#FFFFFF; --card-b:#F2EEE5; --glow:#FFFFFF;
+    --disabled-bg:#E2DCD0; --disabled-fg:#9AA3AE;
+  }
+  body.light::after{opacity:0;}
+  body.light .btn, body.light .btn-danger{color:#FFFFFF;}
+  body.light .tabs button[aria-pressed=true]{color:#FFFFFF;}
+  body.light .seal{border-color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1. CONFIGURATION -->
+  <section id="screen-setup">
+    <p class="eyebrow">Dossier — niveau <b>confidentiel</b></p>
+    <h1>Service<br>spécial</h1>
+    <p class="lede">Tout le monde reçoit le même nom. Sauf les intrus, qui devront le deviner sans se faire repérer.</p>
+
+    <div class="block">
+      <h2>Joueurs</h2>
+      <div class="row">
+        <div class="grow"><input type="text" id="player-input" placeholder="Prénom" autocomplete="off" enterkeyhint="done" maxlength="18"></div>
+        <button class="btn-mini" id="add-player" type="button">Ajouter</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <p class="empty" id="players-empty">Ajoutez au moins trois joueurs.</p>
+      <p class="toast" id="setup-toast"></p>
+    </div>
+
+    <div class="block">
+      <h2>Intrus</h2>
+      <div class="stepper">
+        <span class="stepper-label">Undercover<span class="stepper-note">Reçoivent un personnage voisin</span></span>
+        <span class="stepper-ctrl">
+          <button type="button" data-step="undercover" data-delta="-1" aria-label="Un undercover de moins">&minus;</button>
+          <output id="out-undercover">1</output>
+          <button type="button" data-step="undercover" data-delta="1" aria-label="Un undercover de plus">+</button>
+        </span>
+      </div>
+      <div class="stepper">
+        <span class="stepper-label">Mr White<span class="stepper-note">Ne reçoit aucun nom</span></span>
+        <span class="stepper-ctrl">
+          <button type="button" data-step="white" data-delta="-1" aria-label="Un Mr White de moins">&minus;</button>
+          <output id="out-white">0</output>
+          <button type="button" data-step="white" data-delta="1" aria-label="Un Mr White de plus">+</button>
+        </span>
+      </div>
+      <p class="tally" id="tally">En attente de joueurs.</p>
+    </div>
+
+    <div class="block">
+      <h2>Difficulté</h2>
+      <div class="modes" id="difficulty" role="group" aria-label="Niveau de difficulté">
+        <button type="button" data-diff="1" aria-pressed="false"><b>Facile</b><span>Duos éloignés, indices affichés, les intrus doivent être strictement plus nombreux pour l'emporter.</span></button>
+        <button type="button" data-diff="2" aria-pressed="true"><b>Intermédiaire</b><span>Duos proches sans être ambigus, règles classiques.</span></button>
+        <button type="button" data-diff="3" aria-pressed="false"><b>Hardcore</b><span>Duos presque synonymes, aucun indice sur les cartes, rôles cachés jusqu'à la fin, Mr White ne devine pas.</span></button>
+      </div>
+      <p class="theme-note" id="diff-note"></p>
+    </div>
+
+    <div class="block">
+      <h2>Mots</h2>
+      <div class="tabs" role="group" aria-label="Origine des mots">
+        <button type="button" id="tab-random" aria-pressed="true">Tirage au sort</button>
+        <button type="button" id="tab-custom" aria-pressed="false">Mots choisis</button>
+      </div>
+
+      <div id="theme-zone">
+        <div class="modes" id="modes" role="group" aria-label="Mode de tirage">
+          <button type="button" data-mode="solo" aria-pressed="true"><b>Un seul anime</b><span>Les deux personnages viennent de la même œuvre.</span></button>
+          <button type="button" data-mode="mix" aria-pressed="false"><b>Animes mélangés</b><span>Deux personnages qui se ressemblent, mais issus d'œuvres différentes.</span></button>
+          <button type="button" data-mode="theme" aria-pressed="false"><b>Autres thèmes</b><span>Tout public, jeux vidéo, football, rap français, cinéma.</span></button>
+        </div>
+        <div class="series" id="series" role="group" aria-label="Choix de la série"></div>
+        <p class="theme-note" id="theme-note"></p>
+      </div>
+
+      <div class="pair-inputs" id="pair-inputs" hidden>
+        <div>
+          <label class="field-label" for="word-civil">Mot des civils</label>
+          <input type="text" id="word-civil" placeholder="Luffy" autocomplete="off" maxlength="28">
+        </div>
+        <div>
+          <label class="field-label" for="word-under">Mot des undercover</label>
+          <input type="text" id="word-under" placeholder="Ace" autocomplete="off" maxlength="28">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" id="start" type="button" disabled>Distribuer les rôles</button>
+    <button class="btn-ghost" id="open-settings" type="button">Paramètres et règles du jeu</button>
+    <button class="btn-ghost" id="open-editor" type="button">Éditeur de duos : ajouter et exporter</button>
+  </section>
+
+  <!-- 6. PARAMÈTRES -->
+  <section id="screen-settings" hidden>
+    <p class="eyebrow">Réglages</p>
+    <h1 style="font-size:clamp(26px,8vw,34px)">Paramètres</h1>
+
+    <div class="block">
+      <h2>Apparence</h2>
+      <div class="tabs" role="group" aria-label="Thème visuel">
+        <button type="button" data-appearance="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-appearance="dark" aria-pressed="false">Sombre</button>
+        <button type="button" data-appearance="light" aria-pressed="false">Jour</button>
+      </div>
+      <p class="theme-note">Le mode automatique suit le réglage de votre téléphone. Le mode sombre reste conseillé en soirée.</p>
+    </div>
+
+    <div class="block">
+      <h2>Règles</h2>
+      <div id="rules-list"></div>
+    </div>
+
+    <div class="block">
+      <h2>Barème de points</h2>
+      <div id="points-list"></div>
+      <button class="btn-ghost" id="rules-reset" type="button">Rétablir les valeurs par défaut</button>
+    </div>
+
+    <div class="block">
+      <h2>Comment jouer</h2>
+      <p class="lede" style="margin:0 0 12px">Le téléphone circule une première fois : chacun maintient le doigt sur la carte pour découvrir son nom secret, puis la referme avant de passer l'appareil.</p>
+      <p class="lede" style="margin:0 0 12px">La majorité des joueurs, les civils, partagent le même nom. Les undercover en reçoivent un autre, proche mais différent, sans savoir qu'ils sont les intrus. Mr White, lui, ne reçoit rien du tout.</p>
+      <p class="lede" style="margin:0 0 12px">Dans l'ordre de parole affiché, chacun prononce un seul mot décrivant ce qu'il a reçu. Trop précis, il aide les intrus ; trop vague, il devient suspect. Après un tour de table, le groupe débat puis élimine un joueur, dont le rôle est révélé aussitôt.</p>
+      <p class="lede" style="margin:0">Les civils l'emportent quand tous les intrus ont été démasqués. Les intrus l'emportent quand ils atteignent le seuil fixé dans les règles ci-dessus.</p>
+    </div>
+
+    <button class="btn" id="settings-back" type="button">Retour à la configuration</button>
+  </section>
+
+  <!-- 5. ÉDITEUR -->
+  <section id="screen-editor" hidden>
+    <p class="eyebrow">Base de <b>duos</b></p>
+    <h1 style="font-size:clamp(26px,8vw,34px)">Éditeur</h1>
+    <p class="lede">Les ajouts sont utilisables immédiatement dans la session. Pour les conserver, exportez le code et collez-le dans le fichier.</p>
+
+    <div class="block">
+      <h2>Destination</h2>
+      <div class="tabs" role="group" aria-label="Destination du duo">
+        <button type="button" data-dest="serie" aria-pressed="true">Série</button>
+        <button type="button" data-dest="theme" aria-pressed="false">Thème</button>
+        <button type="button" data-dest="cross" aria-pressed="false">Croisé</button>
+      </div>
+      <div class="stack" id="dest-fields" style="margin-top:12px"></div>
+    </div>
+
+    <div class="block">
+      <h2>Nouveau duo</h2>
+      <div class="stack">
+        <div>
+          <label class="field-label" for="ed-a">Premier nom</label>
+          <input type="text" id="ed-a" autocomplete="off" maxlength="32">
+        </div>
+        <div>
+          <label class="field-label" for="ed-b">Second nom</label>
+          <input type="text" id="ed-b" autocomplete="off" maxlength="32">
+        </div>
+      </div>
+      <p class="toast" id="ed-toast"></p>
+      <button class="btn" id="ed-add" type="button">Ajouter le duo</button>
+    </div>
+
+    <div class="block">
+      <h2>Ajouts de la session (<span id="ed-count">0</span>)</h2>
+      <ul class="result-list" id="ed-list"></ul>
+      <p class="empty" id="ed-empty">Aucun ajout pour le moment.</p>
+      <button class="btn-ghost" id="ed-export" type="button">Générer le code à copier</button>
+      <textarea id="ed-out" readonly hidden aria-label="Code à copier"></textarea>
+      <button class="btn-ghost" id="ed-copy" type="button" hidden>Copier dans le presse-papier</button>
+    </div>
+
+    <button class="btn" id="ed-back" type="button">Retour à la configuration</button>
+  </section>
+
+  <!-- 2. DISTRIBUTION -->
+  <section id="screen-deal" hidden>
+    <p class="eyebrow">Remise <b><span id="deal-count">1 / 4</span></b></p>
+    <div class="handoff">
+      <p class="to">Passe le téléphone à</p>
+      <p class="name" id="deal-name">—</p>
+    </div>
+
+    <div class="card" id="card" role="button" tabindex="0" aria-label="Maintenir appuyé pour voir son personnage">
+      <div class="card-face card-front">
+        <span class="seal">SCELLÉ</span>
+        <span class="hint">Maintenez le doigt appuyé pour lire. Tout disparaît dès que vous relâchez.</span>
+      </div>
+      <div class="card-face card-back" aria-live="polite">
+        <span class="emblem" id="card-emblem" aria-hidden="true"></span>
+        <span class="kicker" id="card-kicker">Votre personnage</span>
+        <span class="word" id="card-word">—</span>
+        <span class="sub" id="card-sub"></span>
+      </div>
+    </div>
+
+    <p class="deal-note" id="deal-note">Personne d'autre ne doit regarder l'écran.</p>
+    <button class="btn" id="deal-next" type="button" disabled>Suivant</button>
+  </section>
+
+  <!-- 3. PARTIE -->
+  <section id="screen-play" hidden>
+    <p class="eyebrow">Manche en cours</p>
+    <h1 style="font-size:clamp(26px,8vw,34px)">Ordre de<br>parole</h1>
+
+    <div class="block"><ol class="order" id="order"></ol></div>
+
+    <div class="block">
+      <h2>Éliminer un joueur</h2>
+      <div class="people" id="people"></div>
+      <div id="confirm-slot"></div>
+      <div id="verdict-slot"></div>
+    </div>
+
+    <div class="block" id="guess-block" hidden>
+      <h2>Mr White tente sa chance</h2>
+      <p class="lede" style="margin:0 0 12px;font-size:14px">Un seul essai pour nommer le personnage des civils.</p>
+      <div class="row">
+        <div class="grow"><input type="text" id="guess-input" placeholder="Le personnage des civils" autocomplete="off"></div>
+        <button class="btn-mini" id="guess-submit" type="button">Valider</button>
+      </div>
+      <button class="btn-ghost" id="guess-skip" type="button">Il passe son tour</button>
+    </div>
+
+    <button class="btn-ghost" id="reveal-all" type="button">Arrêter et tout révéler</button>
+  </section>
+
+  <!-- 4. FIN -->
+  <section id="screen-end" hidden>
+    <p class="eyebrow">Dossier <b>déclassifié</b></p>
+    <div class="banner" id="end-banner">
+      <p class="eyebrow" style="margin:0">Victoire</p>
+      <p class="who" id="end-who">—</p>
+      <p class="why" id="end-why">—</p>
+    </div>
+    <div class="block">
+      <h2>Rôles</h2>
+      <ul class="result-list" id="end-list"></ul>
+    </div>
+    <div class="block">
+      <h2>Classement — manche <span id="manche-no">1</span></h2>
+      <ul class="result-list" id="score-list"></ul>
+      <p class="theme-note" id="score-rule"></p>
+      <button class="btn-ghost" id="reset-scores" type="button">Remettre les scores à zéro</button>
+    </div>
+    <button class="btn" id="replay" type="button">Rejouer avec les mêmes joueurs</button>
+    <button class="btn-ghost" id="restart" type="button">Changer les joueurs</button>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =====================================================================
+     BASE DE DONNÉES — tout est modifiable ici
+     =====================================================================
+     1. SERIES     : un objet par anime. Ajoutez un duo avec ["Nom A","Nom B"].
+                     Pour créer une nouvelle série, copiez un bloc entier et
+                     changez id, label et tint.
+     2. CROSSOVER  : duos de personnages qui se ressemblent mais viennent
+                     d'œuvres différentes. Format :
+                     ["Nom A","Série A","Nom B","Série B"]
+     3. GENERAL    : duos sans culture manga, format ["Mot A","Mot B"].
+     4. IMAGES     : portraits facultatifs, voir plus bas.
+     ===================================================================== */
+
+  var SERIES = [
+    {
+      id:"one-piece", label:"One Piece", tint:"#D4553A",
+      pairs:[
+        ["Luffy","Ace"],["Zoro","Sanji"],["Nami","Robin"],["Usopp","Franky"],
+        ["Chopper","Brook"],["Shanks","Barbe Blanche"],["Barbe Noire","Kaido"],
+        ["Doflamingo","Crocodile"],["Akainu","Aokiji"],["Law","Kid"],
+        ["Sabo","Ace"],["Garp","Sengoku"],["Mihawk","Baggy"],
+        ["Boa Hancock","Nami"],["Big Mom","Kaido"],["Katakuri","Marco"],
+        ["Sanji","Jinbe"],["Jinbe","Franky"],["Robin","Vivi"],["Vivi","Rebecca"],
+        ["Perona","Boa Hancock"],["Bartolomeo","Cavendish"],["Bepo","Chopper"],
+        ["Rayleigh","Garp"],["Gold Roger","Barbe Blanche"],["Kizaru","Fujitora"],
+        ["Smoker","Tashigi"],["Coby","Helmeppo"],["Enel","Crocodile"],
+        ["Arlong","Kuro"],["Baggy","Alvida"],["Zeff","Sanji"],
+        ["Kuma","Ivankov"],["Yamato","Kaido"],["Queen","King"],["King","Jack"],
+        ["Oden","Gold Roger"],["Momonosuke","Yamato"],["Brook","Laboon"],
+        ["Shirahoshi","Vivi"]
+      ]
+    },
+    {
+      id:"hxh", label:"Hunter x Hunter", tint:"#4E9B6E",
+      pairs:[
+        ["Gon","Kirua"],["Kurapika","Leorio"],["Hisoka","Illumi"],["Chrollo","Feitan"],
+        ["Meruem","Netero"],["Neferpitou","Shaiapouf"],["Ging","Kaito"],["Bisky","Wing"],
+        ["Machi","Shizuku"],["Silva","Zeno"],["Alluka","Kalluto"],["Knuckle","Shoot"],
+        ["Leorio","Knuckle"],["Netero","Zeno"],["Pariston","Ging"],["Cheadle","Pariston"],
+        ["Kaito","Gon"],["Palm","Melody"],["Melody","Bisky"],["Kortopi","Shalnark"],
+        ["Nobunaga","Uvogin"],["Uvogin","Phinks"],["Phinks","Feitan"],["Genthru","Chrollo"],
+        ["Colt","Ikalgo"],["Menthuthuyoupi","Neferpitou"],["Komugi","Meruem"],
+        ["Illumi","Milluki"],["Milluki","Kalluto"],["Zushi","Gon"],["Wing","Zushi"],
+        ["Hanzo","Hisoka"],["Pokkle","Ponzu"],["Biscuit","Machi"]
+      ]
+    },
+    {
+      id:"7ds", label:"Seven Deadly Sins", tint:"#C7A15A",
+      pairs:[
+        ["Meliodas","Ban"],["King","Diane"],["Escanor","Estarossa"],["Merlin","Gowther"],
+        ["Elizabeth","Elaine"],["Zeldris","Estarossa"],["Hendrickson","Dreyfus"],
+        ["Gilthunder","Howzer"],["Arthur","Merlin"],["Hawk","Oslo"],
+        ["Meliodas","Zeldris"],["Galand","Monspiet"],
+        ["Ban","Elaine"],["Diane","Matrona"],["Escanor","Meliodas"],["Merlin","Escanor"],
+        ["Gowther","King"],["Zeldris","Gelda"],["Gelda","Elizabeth"],["Derieri","Monspiet"],
+        ["Fraudrin","Galand"],["Grayroad","Melascula"],["Melascula","Derieri"],
+        ["Chandler","Cusack"],["Chandler","Zeldris"],["Baltra","Arthur"],
+        ["Gilthunder","Margaret"],["Griamore","Gilthunder"],["Jericho","Diane"],
+        ["Hawk","Wild"],["Drole","Gloxinia"],["Gloxinia","King"],["Mael","Estarossa"],
+        ["Tristan","Arthur"]
+      ]
+    },
+    {
+      id:"snk", label:"Shingeki no Kyojin", tint:"#7C8C9E",
+      pairs:[
+        ["Eren","Mikasa"],["Armin","Jean"],["Levi","Erwin"],["Hansi","Erwin"],
+        ["Reiner","Bertholdt"],["Annie","Ymir"],["Historia","Ymir"],["Sasha","Connie"],
+        ["Zeke","Eren"],["Falco","Gabi"],["Pieck","Porco"],["Kenny","Grisha"],
+        ["Erwin","Pixis"],["Pixis","Shadis"],["Bertholdt","Annie"],["Porco","Marcel"],
+        ["Marcel","Bertholdt"],["Gabi","Udo"],["Udo","Zofia"],["Colt","Falco"],
+        ["Yelena","Onyankopon"],["Onyankopon","Hansi"],["Floch","Jean"],["Nile","Pixis"],
+        ["Kuchel","Kenny"],["Uri","Rod Reiss"],["Rod Reiss","Historia"],["Frieda","Historia"],
+        ["Carla","Dina"],["Grisha","Eren"],["Mikasa","Levi"],["Hansi","Moblit"],
+        ["Petra","Oluo"],["Oluo","Gunther"],["Eld","Gunther"]
+      ]
+    },
+    {
+      id:"death-note", label:"Death Note", tint:"#9B7BC4",
+      pairs:[
+        ["Light","L"],["Near","Mello"],["Ryuk","Rem"],["Misa","Takada"],
+        ["Matsuda","Aizawa"],["Soichiro Yagami","Watari"],["Mikami","Higuchi"],
+        ["Naomi Misora","Raye Penber"],["L","Near"],["Light","Mikami"],
+        ["Light","Near"],["Misa","Sayu"],["Sayu","Takada"],["Watari","Roger"],
+        ["Mello","Matt"],["Matt","Near"],["Aizawa","Mogi"],["Mogi","Ide"],
+        ["Ide","Matsuda"],["Ukita","Mogi"],["Rem","Sidoh"],["Sidoh","Ryuk"],
+        ["Gelus","Rem"],["Demegawa","Takada"],["Halle Lidner","Naomi Misora"],
+        ["Rester","Gevanni"],["Gevanni","Mikami"],["Roi des Shinigami","Ryuk"]
+      ]
+    },
+    {
+      id:"dbz", label:"Dragon Ball Z", tint:"#E08A2E",
+      pairs:[
+        ["Sangoku","Vegeta"],["Gohan","Trunks"],["Piccolo","Dendé"],["Krilin","Yamcha"],
+        ["Freezer","Cell"],["Cell","Boo"],["C-17","C-18"],["C-16","C-19"],
+        ["Bulma","Chichi"],["Nappa","Raditz"],["Tortue Géniale","Kaio"],
+        ["Mr Satan","Videl"],["Capitaine Ginyu","Recoome"],["Tenshinhan","Yamcha"],
+        ["Gohan","Goten"],["Goten","Trunks"],["Videl","Chichi"],["Kaio","Kaioshin"],
+        ["Kaioshin","Kibito"],["Dabra","Babidi"],["Babidi","Bibidi"],["Vegeta","Nappa"],
+        ["Raditz","Turles"],["Cooler","Freezer"],["Zarbon","Dodoria"],["Ginyu","Burter"],
+        ["Jeece","Burter"],["Guldo","Recoome"],["Cell","C-16"],["Piccolo","Kami"],
+        ["Kami","Mister Popo"],["Yajirobé","Krilin"],["Chaozu","Tenshinhan"],
+        ["Uub","Goten"],["Pan","Bra"],["Bra","Marron"],["Dendé","Mister Popo"],
+        ["Shenron","Porunga"],["Bardock","Roi Vegeta"]
+      ]
+    },
+    {
+      id:"dbs", label:"Dragon Ball Super", tint:"#4F9BD4",
+      pairs:[
+        ["Beerus","Champa"],["Whis","Vados"],["Goku Black","Zamasu"],["Jiren","Toppo"],
+        ["Hit","Cabba"],["Caulifla","Kale"],["Broly","Gogeta"],["Vegeto","Gogeta"],
+        ["Zeno","Grand Prêtre"],["Frost","Freezer"],["Kefla","Caulifla"],
+        ["Moro","Granolah"],["Ultra Instinct","Super Saiyan Blue"],
+        ["Beerus","Quitela"],["Toppo","Dyspo"],["Dyspo","Hit"],["Kale","Ribrianne"],
+        ["Zamasu","Gowasu"],["Gowasu","Shin"],["Merus","Jaco"],["Granolah","Gas"],
+        ["Gas","Elec"],["Cheelai","Lemo"],["Broly","Paragus"],
+        ["Freezer doré","Super Saiyan Rosé"],["Trunks du futur","Mai"],["Mai","Bulma"],
+        ["Zeno","Zeno du futur"],["Grand Prêtre","Whis"],["Hit","Jiren"],
+        ["Botamo","Magetta"],["Monaka","Mr Satan"]
+      ]
+    },
+    {
+      id:"jjk", label:"Jujutsu Kaisen", tint:"#6E8BD0",
+      pairs:[
+        ["Yuji","Megumi"],["Nobara","Maki"],["Gojo","Nanami"],["Sukuna","Mahito"],
+        ["Toji","Choso"],["Yuta","Rika"],["Panda","Inumaki"],["Todo","Mei Mei"],
+        ["Kenjaku","Geto"],["Jogo","Hanami"],["Yaga","Gakuganji"],["Higuruma","Hakari"],
+        ["Yuji","Nobara"],["Megumi","Yuta"],["Maki","Mai"],["Mai","Toji"],
+        ["Inumaki","Nobara"],["Nanami","Ino"],["Ino","Megumi"],["Mechamaru","Miwa"],
+        ["Miwa","Momo"],["Momo","Nobara"],["Todo","Yuji"],["Kashimo","Hakari"],
+        ["Hakari","Kirara"],["Uraume","Sukuna"],["Jogo","Dagon"],["Dagon","Hanami"],
+        ["Mahito","Kenjaku"],["Geto","Gojo"],["Yorozu","Uraume"],["Tengen","Yaga"],
+        ["Rika","Sukuna"],["Choso","Eso"]
+      ]
+    },
+    {
+      id:"pokemon", label:"Pokémon", tint:"#D8B23A",
+      pairs:[
+        ["Sacha","Ondine"],["Pierre","Ondine"],["Pikachu","Évoli"],["Salamèche","Carapuce"],
+        ["Bulbizarre","Carapuce"],["Dracaufeu","Tortank"],["Mewtwo","Mew"],
+        ["Jessie","James"],["Miaouss","Persian"],["Lugia","Ho-Oh"],["Dialga","Palkia"],
+        ["Arceus","Giratina"],["Ronflex","Léviator"],["Professeur Chen","Professeur Sorbier"],
+        ["Aurore","Flora"],["Serena","Iris"],["Lem","Pierre"],["Sacha","Régis"],
+        ["Pikachu","Raichu"],["Salamèche","Reptincel"],["Carapuce","Carabaffe"],
+        ["Bulbizarre","Herbizarre"],["Évoli","Aquali"],["Aquali","Pyroli"],
+        ["Voltali","Mentali"],["Noctali","Phyllali"],["Ronflex","Rondoudou"],
+        ["Magicarpe","Léviator"],["Roucool","Piafabec"],["Rattata","Rattatac"],
+        ["Abra","Kadabra"],["Machoc","Racaillou"],["Onix","Steelix"],
+        ["Mew","Celebi"],["Celebi","Jirachi"],["Jirachi","Manaphy"],
+        ["Rayquaza","Groudon"],["Groudon","Kyogre"],["Zekrom","Reshiram"],
+        ["Xerneas","Yveltal"],["Solgaleo","Lunala"],["Zacian","Zamazenta"],
+        ["Giovanni","Jessie"],["Cynthia","Peter"],["Poké Ball","Master Ball"]
+      ]
+    },
+    {
+      id:"solo-leveling", label:"Solo Leveling", tint:"#5CC0C0",
+      pairs:[
+        ["Sung Jinwoo","Cha Hae-In"],["Igris","Beru"],["Igris","Tusk"],
+        ["Go Gunhee","Baek Yoonho"],["Choi Jong-In","Baek Yoonho"],
+        ["Sung Jinwoo","Yoo Jinho"],["Thomas Andre","Liu Zhigang"],
+        ["Antares","Ashborn"],["Woo Jinchul","Go Gunhee"],["Sung Il-Hwan","Sung Jinwoo"],
+        ["Cha Hae-In","Choi Jong-In"],["Baek Yoonho","Ma Dongwook"],
+        ["Ma Dongwook","Yoo Jinho"],["Woo Jinchul","Choi Jong-In"],
+        ["Hwang Dongsoo","Hwang Dongsuk"],["Yoo Myunghan","Go Gunhee"],
+        ["Sung Jinah","Park Kyunghye"],["Igris","Iron"],["Iron","Tusk"],
+        ["Beru","Kaisel"],["Kaisel","Kamish"],["Kamish","Antares"],
+        ["Ashborn","Legia"],["Thomas Andre","Christopher Reed"],
+        ["Liu Zhigang","Goto Ryuji"],["Goto Ryuji","Thomas Andre"],
+        ["Esil Radiru","Cha Hae-In"],["Bellion","Beru"],["Querehsha","Antares"],
+        ["Yuri Orlov","Liu Zhigang"]
+      ]
+    },
+    {
+      id:"mha", label:"My Hero Academia", tint:"#5FA86B",
+      pairs:[
+        ["Deku","Bakugo"],["All Might","Endeavor"],["Todoroki","Bakugo"],
+        ["Uraraka","Tsuyu"],["Iida","Kirishima"],["Kirishima","Kaminari"],
+        ["Momo","Jiro"],["Shigaraki","Dabi"],["Dabi","Toga"],
+        ["All For One","Shigaraki"],["Aizawa","Present Mic"],["Mirio","Amajiki"],
+        ["Overhaul","Stain"],
+        ["Deku","Mirio"],["All Might","Nighteye"],["Nighteye","Aizawa"],
+        ["Hawks","Endeavor"],["Best Jeanist","Hawks"],["Midnight","Mt Lady"],
+        ["Tokoyami","Shoji"],["Shoji","Sato"],["Mineta","Kaminari"],
+        ["Sero","Ojiro"],["Ashido","Hagakure"],["Hagakure","Koda"],
+        ["Aoyama","Sero"],["Shinso","Monoma"],["Monoma","Kendo"],
+        ["Kendo","Tetsutetsu"],["Tetsutetsu","Kirishima"],
+        ["Gentle Criminal","La Brava"],["Twice","Toga"],["Spinner","Mustard"],
+        ["Compress","Twice"],["Re-Destro","Shigaraki"],["Lady Nagant","Hawks"],
+        ["Star and Stripe","All Might"],["Eri","Kota"],["Bakugo","Kirishima"],
+        ["Uraraka","Toga"]
+      ]
+    },
+    {
+      id:"naruto", label:"Naruto", tint:"#E2803C",
+      pairs:[
+        ["Naruto","Sasuke"],["Sakura","Ino"],["Kakashi","Yamato"],["Jiraiya","Orochimaru"],
+        ["Tsunade","Jiraiya"],["Itachi","Shisui"],["Gaara","Kankuro"],["Temari","Kankuro"],
+        ["Rock Lee","Neji"],["Neji","Hinata"],["Hinata","Sakura"],["Shikamaru","Choji"],
+        ["Kiba","Shino"],["Minato","Kushina"],["Hashirama","Madara"],["Madara","Obito"],
+        ["Obito","Kakashi"],["Pain","Konan"],["Deidara","Sasori"],["Hidan","Kakuzu"],
+        ["Kisame","Itachi"],["Zetsu","Tobi"],["Kabuto","Orochimaru"],["Killer Bee","Naruto"],
+        ["Boruto","Sarada"],["Sarada","Mitsuki"],["Danzo","Hiruzen"],["Hiruzen","Tsunade"],
+        ["Kurama","Gyuki"],["Asuma","Kurenai"]
+      ]
+    },
+    {
+      id:"bleach", label:"Bleach", tint:"#B85C7A",
+      pairs:[
+        ["Ichigo","Rukia"],["Rukia","Renji"],["Renji","Byakuya"],["Byakuya","Toshiro"],
+        ["Toshiro","Rangiku"],["Kenpachi","Yachiru"],["Mayuri","Nemu"],["Urahara","Yoruichi"],
+        ["Yoruichi","Soi Fon"],["Aizen","Gin"],["Gin","Tosen"],["Tosen","Komamura"],
+        ["Ulquiorra","Grimmjow"],["Grimmjow","Nnoitra"],["Nnoitra","Szayel"],
+        ["Halibel","Starrk"],["Starrk","Barragan"],["Orihime","Tatsuki"],["Chad","Uryu"],
+        ["Uryu","Ryuken"],["Isshin","Masaki"],["Yamamoto","Kyoraku"],["Kyoraku","Ukitake"],
+        ["Nelliel","Halibel"],["Yhwach","Aizen"],["Jugram","Bazz-B"],["Ichigo","Kaien"]
+      ]
+    },
+    {
+      id:"demon-slayer", label:"Demon Slayer", tint:"#6FA8C7",
+      pairs:[
+        ["Tanjiro","Nezuko"],["Zenitsu","Inosuke"],["Giyu","Shinobu"],["Shinobu","Kanao"],
+        ["Kanao","Aoi"],["Rengoku","Tengen"],["Tengen","Muichiro"],["Muichiro","Gyomei"],
+        ["Gyomei","Sanemi"],["Sanemi","Genya"],["Genya","Tanjiro"],["Obanai","Mitsuri"],
+        ["Mitsuri","Shinobu"],["Muzan","Kokushibo"],["Kokushibo","Yoriichi"],
+        ["Akaza","Doma"],["Doma","Gyutaro"],["Gyutaro","Daki"],["Daki","Nezuko"],
+        ["Enmu","Rui"],["Rui","Akaza"],["Urokodaki","Shinjuro"],["Kagaya","Muzan"],
+        ["Yushiro","Tamayo"],["Tamayo","Shinobu"],["Susamaru","Yahaba"],["Sabito","Makomo"]
+      ]
+    },
+    {
+      id:"chainsaw-man", label:"Chainsaw Man", tint:"#C25B4E",
+      pairs:[
+        ["Denji","Power"],["Power","Aki"],["Aki","Himeno"],["Himeno","Kobeni"],
+        ["Kobeni","Arai"],["Makima","Kishibe"],["Kishibe","Quanxi"],["Quanxi","Katana Man"],
+        ["Reze","Makima"],["Denji","Reze"],["Pochita","Power"],["Angel","Aki"],
+        ["Beam","Pochita"],["Sawatari","Kobeni"],["Yoshida","Denji"],["Asa","Yoru"],
+        ["Yoru","Makima"],["Nayuta","Makima"],["Fami","Yoru"],["Barem","Kishibe"],
+        ["Diable Tronçonneuse","Diable Arme à Feu"],["Diable Ténèbres","Diable Enfer"],
+        ["Diable Éternité","Diable Zombie"],["Hirokazu","Aki"]
+      ]
+    },
+    {
+      id:"fma", label:"Fullmetal Alchemist", tint:"#C99A4E",
+      pairs:[
+        ["Edward Elric","Alphonse Elric"],["Roy Mustang","Riza Hawkeye"],["Riza Hawkeye","Rebecca"],
+        ["Winry","Riza Hawkeye"],["Envy","Lust"],["Lust","Gluttony"],["Gluttony","Sloth"],
+        ["Sloth","Pride"],["Pride","Wrath"],["Wrath","Greed"],["Greed","Ling"],
+        ["Ling","Lan Fan"],["Lan Fan","Fu"],["Scar","Kimblee"],["Kimblee","Roy Mustang"],
+        ["Hughes","Roy Mustang"],["Armstrong","Olivier"],["Olivier","Buccaneer"],
+        ["Hohenheim","Trisha"],["Père","Hohenheim"],["Izumi","Sig"],["Marcoh","Knox"],
+        ["Bradley","Roy Mustang"],["Alphonse Elric","Ling"],["Mei Chan","Lan Fan"],
+        ["Xiao Mei","Den"]
+      ]
+    },
+    {
+      id:"opm", label:"One Punch Man", tint:"#D9C24E",
+      pairs:[
+        ["Saitama","Genos"],["Genos","Bang"],["Bang","Bomb"],["King","Saitama"],
+        ["Tatsumaki","Fubuki"],["Fubuki","Psykos"],["Psykos","Orochi"],["Orochi","Garou"],
+        ["Garou","Bang"],["Boros","Saitama"],["Metal Bat","Puri Puri Prisoner"],
+        ["Puri Puri Prisoner","Atomic Samurai"],["Atomic Samurai","Metal Knight"],
+        ["Metal Knight","Drive Knight"],["Child Emperor","Zombieman"],["Zombieman","Pig God"],
+        ["Pig God","Superalloy"],["Mumen Rider","Saitama"],["Sonic","Flashy Flash"],
+        ["Flashy Flash","Atomic Samurai"],["Roi des Profondeurs","Boros"],
+        ["Vaccine Man","Mosquito Girl"],["Amai Mask","King"],["Blast","Tatsumaki"],
+        ["Gouketsu","Garou"]
+      ]
+    },
+    {
+      id:"fairy-tail", label:"Fairy Tail", tint:"#B67ACB",
+      pairs:[
+        ["Natsu","Gray"],["Gray","Gajeel"],["Gajeel","Laxus"],["Laxus","Makarov"],
+        ["Erza","Mirajane"],["Mirajane","Lisanna"],["Lisanna","Elfman"],["Lucy","Levy"],
+        ["Levy","Wendy"],["Wendy","Chelia"],["Happy","Carla"],["Carla","Panther Lily"],
+        ["Juvia","Gray"],["Jellal","Erza"],["Zeref","Mavis"],["Mavis","Makarov"],
+        ["Acnologia","Zeref"],["Sting","Rogue"],["Rogue","Gajeel"],["Cobra","Midnight"],
+        ["Ultear","Meredy"],["Gildarts","Natsu"],["Ivan","Laxus"],["Kagura","Erza"]
+      ]
+    },
+    {
+      id:"blue-lock", label:"Blue Lock", tint:"#4E7FD4",
+      pairs:[
+        ["Isagi","Bachira"],["Bachira","Chigiri"],["Chigiri","Kunigami"],["Kunigami","Nagi"],
+        ["Nagi","Reo"],["Reo","Isagi"],["Rin","Sae"],["Sae","Isagi"],["Barou","Aryu"],
+        ["Aryu","Otoya"],["Karasu","Otoya"],["Hiori","Isagi"],["Kaiser","Ness"],
+        ["Ness","Hiori"],["Lorenzo","Snuffy"],["Snuffy","Loki"],["Loki","Charles"],
+        ["Charles","Kaiser"],["Ego","Anri"],["Anri","Teieri"],["Gagamaru","Niko"],
+        ["Niko","Yukimiya"],["Yukimiya","Kurona"],["Kurona","Zantetsu"]
+      ]
+    }
+  ];
+
+  var CROSSOVER = [
+    ["Sangoku","Dragon Ball Z","Luffy","One Piece"],
+    ["Luffy","One Piece","Meliodas","Seven Deadly Sins"],
+    ["Sacha","Pokémon","Luffy","One Piece"],
+    ["Deku","My Hero Academia","Yuji","Jujutsu Kaisen"],
+    ["Gon","Hunter x Hunter","Yuji","Jujutsu Kaisen"],
+    ["Deku","My Hero Academia","Sung Jinwoo","Solo Leveling"],
+    ["Vegeta","Dragon Ball Z","Bakugo","My Hero Academia"],
+    ["Bakugo","My Hero Academia","Zoro","One Piece"],
+    ["Levi","Shingeki no Kyojin","Zoro","One Piece"],
+    ["Igris","Solo Leveling","Levi","Shingeki no Kyojin"],
+    ["Mikasa","Shingeki no Kyojin","Cha Hae-In","Solo Leveling"],
+    ["Maki","Jujutsu Kaisen","Mikasa","Shingeki no Kyojin"],
+    ["Megumi","Jujutsu Kaisen","Sung Jinwoo","Solo Leveling"],
+    ["Beru","Solo Leveling","Meruem","Hunter x Hunter"],
+    ["Antares","Solo Leveling","Kaido","One Piece"],
+    ["Gojo","Jujutsu Kaisen","All Might","My Hero Academia"],
+    ["Whis","Dragon Ball Super","Netero","Hunter x Hunter"],
+    ["Netero","Hunter x Hunter","Tortue Géniale","Dragon Ball Z"],
+    ["Piccolo","Dragon Ball Z","Aizawa","My Hero Academia"],
+    ["Nanami","Jujutsu Kaisen","Aizawa","My Hero Academia"],
+    ["Escanor","Seven Deadly Sins","All Might","My Hero Academia"],
+    ["Jiren","Dragon Ball Super","Escanor","Seven Deadly Sins"],
+    ["Sukuna","Jujutsu Kaisen","Freezer","Dragon Ball Z"],
+    ["Boo","Dragon Ball Z","Mahito","Jujutsu Kaisen"],
+    ["Mewtwo","Pokémon","Cell","Dragon Ball Z"],
+    ["Arceus","Pokémon","Zeno","Dragon Ball Super"],
+    ["Ryuk","Death Note","Beerus","Dragon Ball Super"],
+    ["Light","Death Note","Kenjaku","Jujutsu Kaisen"],
+    ["Light","Death Note","Eren","Shingeki no Kyojin"],
+    ["Zamasu","Dragon Ball Super","Light","Death Note"],
+    ["L","Death Note","Kurapika","Hunter x Hunter"],
+    ["Kurapika","Hunter x Hunter","Eren","Shingeki no Kyojin"],
+    ["Shigaraki","My Hero Academia","Eren","Shingeki no Kyojin"],
+    ["Kirua","Hunter x Hunter","Todoroki","My Hero Academia"],
+    ["Hisoka","Hunter x Hunter","Toga","My Hero Academia"],
+    ["Illumi","Hunter x Hunter","Toji","Jujutsu Kaisen"],
+    ["Chopper","One Piece","Pikachu","Pokémon"],
+    ["Pikachu","Pokémon","Hawk","Seven Deadly Sins"],
+    ["Miaouss","Pokémon","Chopper","One Piece"],
+    ["Dracaufeu","Pokémon","Marco","One Piece"],
+    ["Krilin","Dragon Ball Z","Usopp","One Piece"],
+    ["Bulma","Dragon Ball Z","Nami","One Piece"],
+    ["Merlin","Seven Deadly Sins","Momo","My Hero Academia"],
+    ["Jessie","Pokémon","Baggy","One Piece"],
+    ["Ban","Seven Deadly Sins","Zoro","One Piece"],
+    ["Thomas Andre","Solo Leveling","Jiren","Dragon Ball Super"],
+    ["Gohan","Dragon Ball Z","Megumi","Jujutsu Kaisen"],
+    ["Trunks","Dragon Ball Z","Yuta","Jujutsu Kaisen"],
+    ["Yuji","Jujutsu Kaisen","Sung Jinwoo","Solo Leveling"],
+    ["Gon","Hunter x Hunter","Sacha","Pokémon"],
+    ["Kirua","Hunter x Hunter","Megumi","Jujutsu Kaisen"],
+    ["Todoroki","My Hero Academia","Zeldris","Seven Deadly Sins"],
+    ["Gojo","Jujutsu Kaisen","Whis","Dragon Ball Super"],
+    ["Meliodas","Seven Deadly Sins","Sangoku","Dragon Ball Z"],
+    ["Ban","Seven Deadly Sins","Kid","One Piece"],
+    ["King","Seven Deadly Sins","Tokoyami","My Hero Academia"],
+    ["Diane","Seven Deadly Sins","Mt Lady","My Hero Academia"],
+    ["Elizabeth","Seven Deadly Sins","Historia","Shingeki no Kyojin"],
+    ["Hawk","Seven Deadly Sins","Miaouss","Pokémon"],
+    ["Beerus","Dragon Ball Super","Antares","Solo Leveling"],
+    ["Vados","Dragon Ball Super","Merlin","Seven Deadly Sins"],
+    ["Zeno","Dragon Ball Super","Eri","My Hero Academia"],
+    ["Hit","Dragon Ball Super","Toji","Jujutsu Kaisen"],
+    ["Hit","Dragon Ball Super","Illumi","Hunter x Hunter"],
+    ["Broly","Dragon Ball Super","Kaido","One Piece"],
+    ["Freezer","Dragon Ball Z","Doflamingo","One Piece"],
+    ["Cell","Dragon Ball Z","Kenjaku","Jujutsu Kaisen"],
+    ["C-18","Dragon Ball Z","Annie","Shingeki no Kyojin"],
+    ["Krilin","Dragon Ball Z","Leorio","Hunter x Hunter"],
+    ["Bulma","Dragon Ball Z","Momo","My Hero Academia"],
+    ["Piccolo","Dragon Ball Z","Nanami","Jujutsu Kaisen"],
+    ["Gohan","Dragon Ball Z","Deku","My Hero Academia"],
+    ["Vegeta","Dragon Ball Z","Endeavor","My Hero Academia"],
+    ["Sangoku","Dragon Ball Z","All Might","My Hero Academia"],
+    ["Mr Satan","Dragon Ball Z","Baggy","One Piece"],
+    ["Sanji","One Piece","Leorio","Hunter x Hunter"],
+    ["Robin","One Piece","Merlin","Seven Deadly Sins"],
+    ["Brook","One Piece","Panda","Jujutsu Kaisen"],
+    ["Franky","One Piece","C-16","Dragon Ball Z"],
+    ["Shanks","One Piece","All Might","My Hero Academia"],
+    ["Barbe Blanche","One Piece","Ashborn","Solo Leveling"],
+    ["Garp","One Piece","Go Gunhee","Solo Leveling"],
+    ["Law","One Piece","Kurapika","Hunter x Hunter"],
+    ["Boa Hancock","One Piece","Midnight","My Hero Academia"],
+    ["Nami","One Piece","Ondine","Pokémon"],
+    ["Sanji","One Piece","Pierre","Pokémon"],
+    ["Sasha","Shingeki no Kyojin","Luffy","One Piece"],
+    ["Armin","Shingeki no Kyojin","L","Death Note"],
+    ["Erwin","Shingeki no Kyojin","Go Gunhee","Solo Leveling"],
+    ["Hansi","Shingeki no Kyojin","Bulma","Dragon Ball Z"],
+    ["Reiner","Shingeki no Kyojin","Choso","Jujutsu Kaisen"],
+    ["Zeke","Shingeki no Kyojin","Kenjaku","Jujutsu Kaisen"],
+    ["Gabi","Shingeki no Kyojin","Bakugo","My Hero Academia"],
+    ["Falco","Shingeki no Kyojin","Deku","My Hero Academia"],
+    ["Levi","Shingeki no Kyojin","Hit","Dragon Ball Super"],
+    ["Near","Death Note","Gowther","Seven Deadly Sins"],
+    ["Ryuk","Death Note","Hisoka","Hunter x Hunter"],
+    ["Misa","Death Note","Toga","My Hero Academia"],
+    ["Meruem","Hunter x Hunter","Sukuna","Jujutsu Kaisen"],
+    ["Chrollo","Hunter x Hunter","Geto","Jujutsu Kaisen"],
+    ["Bisky","Hunter x Hunter","Merlin","Seven Deadly Sins"],
+    ["Komugi","Hunter x Hunter","Eri","My Hero Academia"],
+    ["Kamish","Solo Leveling","Rayquaza","Pokémon"],
+    ["Yoo Jinho","Solo Leveling","Usopp","One Piece"],
+    ["Thomas Andre","Solo Leveling","All Might","My Hero Academia"],
+    ["Cha Hae-In","Solo Leveling","Maki","Jujutsu Kaisen"],
+    ["Igris","Solo Leveling","Zoro","One Piece"],
+    ["Pikachu","Pokémon","Kaminari","My Hero Academia"],
+    ["Dracaufeu","Pokémon","Endeavor","My Hero Academia"],
+    ["Tortank","Pokémon","Jinbe","One Piece"],
+    ["Lugia","Pokémon","Marco","One Piece"],
+    ["Arceus","Pokémon","Ashborn","Solo Leveling"],
+    ["Giovanni","Pokémon","All For One","My Hero Academia"],
+    ["Sacha","Pokémon","Deku","My Hero Academia"],
+    ["Professeur Chen","Pokémon","Tortue Géniale","Dragon Ball Z"],
+    ["Mewtwo","Pokémon","Rika","Jujutsu Kaisen"],
+    ["Dabi","My Hero Academia","Choso","Jujutsu Kaisen"],
+    ["Hawks","My Hero Academia","Marco","One Piece"],
+    ["Shigaraki","My Hero Academia","Mahito","Jujutsu Kaisen"],
+    ["Uraraka","My Hero Academia","Elizabeth","Seven Deadly Sins"],
+    ["Naruto","Naruto","Deku","My Hero Academia"],
+    ["Naruto","Naruto","Luffy","One Piece"],
+    ["Sasuke","Naruto","Todoroki","My Hero Academia"],
+    ["Kakashi","Naruto","Gojo","Jujutsu Kaisen"],
+    ["Jiraiya","Naruto","Tortue Géniale","Dragon Ball Z"],
+    ["Itachi","Naruto","Zeke","Shingeki no Kyojin"],
+    ["Gaara","Naruto","Kirua","Hunter x Hunter"],
+    ["Rock Lee","Naruto","Kirishima","My Hero Academia"],
+    ["Orochimaru","Naruto","Kenjaku","Jujutsu Kaisen"],
+    ["Madara","Naruto","Antares","Solo Leveling"],
+    ["Hinata","Naruto","Uraraka","My Hero Academia"],
+    ["Ichigo","Bleach","Yuji","Jujutsu Kaisen"],
+    ["Rukia","Bleach","Mikasa","Shingeki no Kyojin"],
+    ["Kenpachi","Bleach","Zoro","One Piece"],
+    ["Byakuya","Bleach","Levi","Shingeki no Kyojin"],
+    ["Aizen","Bleach","Light","Death Note"],
+    ["Urahara","Bleach","Gojo","Jujutsu Kaisen"],
+    ["Toshiro","Bleach","Todoroki","My Hero Academia"],
+    ["Grimmjow","Bleach","Bakugo","My Hero Academia"],
+    ["Yoruichi","Bleach","Cha Hae-In","Solo Leveling"],
+    ["Tanjiro","Demon Slayer","Deku","My Hero Academia"],
+    ["Nezuko","Demon Slayer","Eri","My Hero Academia"],
+    ["Zenitsu","Demon Slayer","Usopp","One Piece"],
+    ["Inosuke","Demon Slayer","Bakugo","My Hero Academia"],
+    ["Giyu","Demon Slayer","Levi","Shingeki no Kyojin"],
+    ["Rengoku","Demon Slayer","Endeavor","My Hero Academia"],
+    ["Muzan","Demon Slayer","Freezer","Dragon Ball Z"],
+    ["Shinobu","Demon Slayer","Nobara","Jujutsu Kaisen"],
+    ["Denji","Chainsaw Man","Yuji","Jujutsu Kaisen"],
+    ["Power","Chainsaw Man","Toga","My Hero Academia"],
+    ["Makima","Chainsaw Man","Kenjaku","Jujutsu Kaisen"],
+    ["Aki","Chainsaw Man","Nanami","Jujutsu Kaisen"],
+    ["Edward Elric","Fullmetal Alchemist","Deku","My Hero Academia"],
+    ["Alphonse Elric","Fullmetal Alchemist","Panda","Jujutsu Kaisen"],
+    ["Roy Mustang","Fullmetal Alchemist","Endeavor","My Hero Academia"],
+    ["Envy","Fullmetal Alchemist","Mahito","Jujutsu Kaisen"],
+    ["Saitama","One Punch Man","Escanor","Seven Deadly Sins"],
+    ["Saitama","One Punch Man","Sangoku","Dragon Ball Z"],
+    ["Genos","One Punch Man","C-16","Dragon Ball Z"],
+    ["Garou","One Punch Man","Shigaraki","My Hero Academia"],
+    ["Tatsumaki","One Punch Man","Uraraka","My Hero Academia"],
+    ["Natsu","Fairy Tail","Luffy","One Piece"],
+    ["Erza","Fairy Tail","Mikasa","Shingeki no Kyojin"],
+    ["Gray","Fairy Tail","Todoroki","My Hero Academia"],
+    ["Lucy","Fairy Tail","Megumi","Jujutsu Kaisen"],
+    ["Acnologia","Fairy Tail","Kamish","Solo Leveling"],
+    ["Isagi","Blue Lock","Deku","My Hero Academia"],
+    ["Rin","Blue Lock","Sasuke","Naruto"],
+    ["Kaiser","Blue Lock","Bakugo","My Hero Academia"]
+  ];
+
+  function tagged(level, list){
+    return list.map(function(p){ return [p[0], p[1], level]; });
+  }
+
+  var GENERAL = [].concat(
+    tagged(1, [
+      ["Chien","Chat"],["Plage","Montagne"],["Soleil","Lune"],["Été","Hiver"],["Jour","Nuit"],["Feu","Eau"],
+      ["Ciel","Terre"],["Voiture","Bateau"],["Avion","Train"],["Vélo","Moto"],["Livre","Film"],
+      ["Guitare","Piano"],["Pizza","Sushi"],["Café","Bière"],["École","Hôpital"],["Docteur","Policier"],
+      ["Roi","Clown"],["Football","Natation"],["Piscine","Forêt"],["Neige","Sable"],["Chaussure","Chapeau"],
+      ["Téléphone","Télévision"],["Ordinateur","Réfrigérateur"],["Lion","Souris"],["Éléphant","Fourmi"],
+      ["Requin","Papillon"],["Dinosaure","Licorne"],["Fantôme","Robot"],["Sorcière","Astronaute"],
+      ["Pirate","Cowboy"],["Vampire","Zombie"],["Noël","Halloween"],["Anniversaire","Mariage"],
+      ["Prison","Hôtel"],["Banque","Boulangerie"],["Chocolat","Fromage"],["Pomme","Steak"],["Soupe","Glace"],
+      ["Miel","Sel"],["Pluie","Vent"],["Volcan","Océan"],["Désert","Jungle"],["Montre","Marteau"],
+      ["Lunettes","Parapluie"],["Ballon","Épée"],["Poupée","Fusée"],["Aspirateur","Guitare"],
+      ["Bougie","Radiateur"],["Jardin","Garage"],["Cuisine","Salle de bain"],["Facteur","Pompier"],
+      ["Professeur","Chanteur"],["Boulanger","Mécanicien"],["Coiffeur","Jardinier"],["Ferme","Usine"],
+      ["Vache","Poisson"],["Poule","Serpent"],["Cheval","Tortue"],["Abeille","Ours"],["Pingouin","Chameau"],
+      ["Perroquet","Grenouille"],["Araignée","Dauphin"],["Fleur","Caillou"],["Arbre","Nuage"],
+      ["Rivière","Route"],["Pont","Tunnel"],["Église","Stade"],["Musée","Marché"],["Cinéma","Bibliothèque"],
+      ["Zoo","Aéroport"],["Valise","Oreiller"],["Couteau","Crayon"],["Savon","Ketchup"],["Miroir","Tapis"],
+      ["Porte","Fenêtre"],["Escalier","Ascenseur"],["Clé","Cadenas"],["Trésor","Poubelle"],
+      ["Diamant","Charbon"],["Roi","Mendiant"],["Géant","Nain"],["Ange","Démon"],["Héros","Voleur"],
+      ["Bébé","Grand-père"],["Mariage","Enterrement"],["Vacances","Examen"],["Pizza","Salade"],
+      ["Frites","Carotte"],["Bonbon","Médicament"],["Thé","Soda"],["Lait","Vin"],["Œuf","Pain"],
+      ["Riz","Pomme de terre"],["Poivre","Sucre"],["Citron","Banane"],["Champignon","Fraise"],
+      ["Carotte","Ananas"],["Pastèque","Noix"],["Barbecue","Micro-ondes"],["Fourchette","Louche"],
+      ["Assiette","Casserole"],["Verre","Seau"],["Serviette","Couverture"],["Lit","Chaise"],
+      ["Canapé","Bureau"],["Lampe","Ventilateur"],["Rideau","Tapis"],["Balai","Marteau"],["Échelle","Chaise"],
+      ["Tente","Maison"],["Igloo","Cabane"],["Château","Grotte"],["Ville","Village"],["Île","Montagne"],
+      ["Lac","Cascade"],["Étoile","Planète"],["Fusée","Sous-marin"],["Satellite","Cerf-volant"],
+      ["Parachute","Trampoline"],["Ski","Surf"],["Boxe","Échecs"],["Marathon","Sieste"],["Danse","Karaoké"],
+      ["Théâtre","Concert"],["Peinture","Photographie"],["Journal","Podcast"],["Radio","Console"],
+      ["Clavier","Manette"],["Casque","Micro"],["Batterie","Chargeur"],["Ampoule","Bougie"],
+      ["Ciseaux","Colle"],["Gomme","Règle"],["Cartable","Trousse"],["Uniforme","Pyjama"],
+      ["Cravate","Casquette"],["Bague","Ceinture"],["Parfum","Dentifrice"],["Rasoir","Peigne"]
+    ]),
+    tagged(2, [
+      ["Café","Thé"],["Métro","Bus"],["Neige","Pluie"],["Football","Rugby"],["Livre","Magazine"],
+      ["Miel","Confiture"],["Piscine","Baignoire"],["Château","Palais"],["Montre","Bracelet"],
+      ["Fromage","Beurre"],["Avion","Hélicoptère"],["Médecin","Infirmier"],["Bougie","Lampe"],
+      ["Sable","Terre"],["Crayon","Stylo"],["Boulangerie","Pâtisserie"],["Ski","Snowboard"],
+      ["Théâtre","Cinéma"],["Oreiller","Couverture"],["Casque","Écouteurs"],["Rivière","Canal"],
+      ["Nuage","Brouillard"],["Sorcière","Fée"],["Prison","Cage"],["Barbe","Moustache"],
+      ["Escalier","Échelle"],["Serveur","Cuisinier"],["Aspirateur","Balai"],["Tatouage","Cicatrice"],
+      ["Poker","Belote"],["Robot","Automate"],["Voisin","Colocataire"],["Mariage","Baptême"],
+      ["Épée","Couteau"],["Ascenseur","Escalator"],["Train","Tramway"],["Bateau","Sous-marin"],
+      ["Camion","Camionnette"],["Taxi","Ambulance"],["Trottinette","Skateboard"],["Rollers","Patins à glace"],
+      ["Parapluie","Parasol"],["Chapeau","Casquette"],["Écharpe","Foulard"],["Gant","Moufle"],
+      ["Chaussette","Collant"],["Botte","Chausson"],["Ceinture","Bretelles"],["Cravate","Nœud papillon"],
+      ["Manteau","Blouson"],["Pyjama","Peignoir"],["Rideau","Store"],["Tapis","Moquette"],
+      ["Canapé","Fauteuil"],["Tabouret","Chaise"],["Armoire","Commode"],["Étagère","Placard"],
+      ["Lampadaire","Applique"],["Miroir","Fenêtre"],["Porte","Portail"],["Balcon","Terrasse"],
+      ["Grenier","Cave"],["Garage","Hangar"],["Cheminée","Radiateur"],["Ventilateur","Climatiseur"],
+      ["Four","Micro-ondes"],["Poêle","Casserole"],["Fourchette","Cuillère"],["Assiette","Plateau"],
+      ["Verre","Tasse"],["Bouteille","Gourde"],["Bocal","Boîte de conserve"],["Serviette","Nappe"],
+      ["Éponge","Chiffon"],["Savon","Gel douche"],["Shampoing","Après-shampoing"],
+      ["Dentifrice","Bain de bouche"],["Rasoir","Tondeuse"],["Peigne","Brosse"],["Parfum","Déodorant"],
+      ["Pansement","Bandage"],["Sirop","Comprimé"],["Thermomètre","Tensiomètre"],["Dentiste","Orthodontiste"],
+      ["Pharmacien","Herboriste"],["Vétérinaire","Éleveur"],["Pompier","Secouriste"],["Policier","Gendarme"],
+      ["Juge","Avocat"],["Professeur","Formateur"],["Facteur","Livreur"],["Coiffeur","Barbier"],
+      ["Plombier","Électricien"],["Menuisier","Charpentier"],["Peintre","Sculpteur"],
+      ["Photographe","Vidéaste"],["Journaliste","Écrivain"],["Chanteur","Rappeur"],
+      ["Batteur","Percussionniste"],["Piano","Orgue"],["Flûte","Clarinette"],["Trompette","Saxophone"],
+      ["Harpe","Accordéon"],["Chorale","Orchestre"],["Concert","Festival"],["Musée","Galerie"],
+      ["Zoo","Aquarium"],["Cirque","Fête foraine"],["Parc d'attractions","Aire de jeux"],
+      ["Toboggan","Balançoire"],["Trampoline","Bac à sable"],["Étang","Lac"],["Forêt","Jungle"],
+      ["Colline","Montagne"],["Grotte","Tunnel"],["Volcan","Geyser"],["Île","Presqu'île"],["Falaise","Dune"],
+      ["Marais","Mangrove"],["Cascade","Fontaine"],["Puits","Citerne"],["Pont","Viaduc"],["Phare","Moulin"],
+      ["Église","Cathédrale"],["Temple","Monastère"],["Château fort","Forteresse"],["Tour","Gratte-ciel"],
+      ["Stade","Arène"],["Vestiaire","Tribune"],["Arbitre","Entraîneur"],["Marathon","Triathlon"],
+      ["Boxe","Judo"],["Escrime","Tir à l'arc"],["Tennis","Badminton"],["Ping-pong","Squash"],
+      ["Volley","Handball"],["Basket-ball","Netball"],["Golf","Pétanque"],["Échecs","Dames"],
+      ["Sudoku","Mots croisés"],["Carte à jouer","Dé"],["Puzzle","Maquette"],["Console","Ordinateur"],
+      ["Souris","Télécommande"],["Écran","Projecteur"],["Enceinte","Micro"],
+      ["Radio","Podcast"],["Journal","Affiche"],["Timbre","Autocollant"],["Enveloppe","Colis"],
+      ["Clé","Badge"],["Cadenas","Verrou"],["Coffre-fort","Tirelire"],["Portefeuille","Trousse"],
+      ["Sac à dos","Valise"],["Passeport","Carte d'identité"],["Billet","Ticket"],["Boussole","GPS"],
+      ["Carte routière","Plan de métro"],["Tente","Caravane"],["Hamac","Duvet"],["Lampe torche","Briquet"],
+      ["Allumette","Silex"],["Barbecue","Feu de camp"],["Chocolat chaud","Cappuccino"],
+      ["Croissant","Pain au chocolat"],["Baguette","Brioche"],["Crêpe","Gaufre"],["Beignet","Churros"],
+      ["Glace","Sorbet"],["Yaourt","Fromage blanc"],["Ketchup","Mayonnaise"],["Moutarde","Wasabi"],
+      ["Sel","Poivre"],["Vinaigre","Citron"],["Riz","Semoule"],["Pâtes","Nouilles"],["Soupe","Bouillon"],
+      ["Salade","Crudités"],["Steak","Escalope"],["Saucisse","Merguez"],["Jambon","Bacon"],["Thon","Saumon"],
+      ["Crevette","Langoustine"],["Huître","Moule"],["Pomme","Poire"],["Fraise","Framboise"],
+      ["Pastèque","Melon"],["Raisin","Cerise"],["Noix","Noisette"],["Champignon","Truffe"],["Pizza","Quiche"],
+      ["Guitare","Violon"],["Sushi","Sashimi"]
+    ]),
+    tagged(3, [
+      ["Canapé","Sofa"],["Vélo","Bicyclette"],["Voiture","Automobile"],["Ordinateur portable","Tablette"],
+      ["Téléphone","Smartphone"],["Autoroute","Voie rapide"],["Sentier","Chemin"],["Colline","Butte"],
+      ["Ruisseau","Torrent"],["Averse","Ondée"],["Brume","Brouillard"],["Tempête","Ouragan"],
+      ["Séisme","Secousse"],["Fauteuil","Chaise longue"],["Coussin","Oreiller"],["Drap","Housse"],
+      ["Couette","Édredon"],["Placard","Penderie"],["Étagère","Rayonnage"],["Bureau","Pupitre"],
+      ["Tabouret","Pouf"],["Casserole","Faitout"],["Poêle","Sauteuse"],["Louche","Écumoire"],
+      ["Saladier","Bol"],["Mug","Tasse"],["Carafe","Pichet"],["Torchon","Chiffon"],["Balai","Serpillière"],
+      ["Seau","Bassine"],["Marmite","Cocotte"],["Assiette creuse","Assiette plate"],["Nappe","Set de table"],
+      ["Pain de mie","Brioche"],["Baguette","Ficelle"],["Chausson aux pommes","Pain aux raisins"],
+      ["Éclair","Religieuse"],["Tarte","Tartelette"],["Flan","Crème brûlée"],
+      ["Mousse au chocolat","Panna cotta"],["Sorbet","Glace italienne"],["Sirop","Nectar"],["Jus","Smoothie"],
+      ["Soda","Limonade"],["Cidre","Poiré"],["Vin blanc","Vin rosé"],["Bière blonde","Bière blanche"],
+      ["Whisky","Bourbon"],["Rhum","Cachaça"],["Espresso","Ristretto"],["Cappuccino","Latte"],
+      ["Thé vert","Thé blanc"],["Infusion","Tisane"],["Bouillon","Consommé"],["Potage","Velouté"],
+      ["Purée","Écrasé"],["Gratin","Tian"],["Ragoût","Mijoté"],["Steak haché","Boulette"],
+      ["Escalope","Paillard"],["Saucisson","Chorizo"],["Pâté","Terrine"],["Rillettes","Mousse de foie"],
+      ["Comté","Gruyère"],["Emmental","Beaufort"],["Yaourt","Skyr"],["Fromage blanc","Faisselle"],
+      ["Crème fraîche","Mascarpone"],["Beurre","Margarine"],["Huile d'olive","Huile de tournesol"],
+      ["Vinaigre balsamique","Vinaigre de vin"],["Sel fin","Gros sel"],["Poivre noir","Poivre blanc"],
+      ["Cannelle","Muscade"],["Basilic","Menthe"],["Persil","Coriandre"],["Thym","Romarin"],
+      ["Oignon","Échalote"],["Ail","Gingembre"],["Courgette","Concombre"],["Aubergine","Poivron"],
+      ["Patate douce","Igname"],["Navet","Rutabaga"],["Épinard","Blette"],["Laitue","Mâche"],
+      ["Clémentine","Mandarine"],["Nectarine","Brugnon"],["Prune","Mirabelle"],["Myrtille","Cassis"],
+      ["Groseille","Grenade"],["Abricot","Pêche"],["Amande","Noisette"],["Pistache","Cacahuète"],
+      ["Lentille","Pois chiche"],["Haricot","Flageolet"],["Blé","Épeautre"],["Avoine","Orge"],
+      ["Sarrasin","Millet"],["Veste","Blouson"],["Pull","Sweat"],["Gilet","Cardigan"],["Chemise","Chemisier"],
+      ["Jean","Pantalon en toile"],["Short","Bermuda"],["Jupe","Robe"],["Basket","Sneaker"],
+      ["Mocassin","Derby"],["Sandale","Nu-pieds"],["Bonnet","Tuque"],["Écharpe","Étole"],
+      ["Sac à main","Pochette"],["Bracelet","Gourmette"],["Collier","Chaîne"],["Bague","Chevalière"],
+      ["Lunettes de soleil","Lunettes de vue"],["Montre","Chronomètre"],
+      ["Téléphone portable","Téléphone fixe"],["Écran","Moniteur"],["Clavier","Pavé numérique"],
+      ["Souris","Trackpad"],["Casque","Oreillette"],["Chargeur","Adaptateur"],["Câble","Cordon"],
+      ["Routeur","Box internet"],["Clé USB","Disque dur externe"],["Imprimante","Photocopieuse"],
+      ["Agrafeuse","Perforatrice"],["Surligneur","Feutre"],["Carnet","Bloc-notes"],
+      ["Classeur","Chemise cartonnée"],["Trombone","Punaise"],["Ruban adhésif","Colle"],
+      ["Enveloppe","Pochette kraft"],["Devis","Facture"],["Reçu","Ticket de caisse"],
+      ["Virement","Prélèvement"],["Crédit","Prêt"],["Assurance","Mutuelle"],["Loyer","Charges"]
+    ])
+  );
+
+  /* THEMES — catégories hors manga. Même structure que SERIES. */
+  var THEMES = [
+    { id:"general", label:"Tout public", tint:"#8B9AB0", pairs:GENERAL },
+    {
+      id:"jeux-video", label:"Jeux vidéo", tint:"#7E6BD0",
+      pairs:[
+        ["Mario","Luigi"],["Peach","Daisy"],["Bowser","Ganondorf"],["Link","Zelda"],
+        ["Sonic","Tails"],["Tails","Knuckles"],["Kirby","Yoshi"],["Donkey Kong","Diddy Kong"],
+        ["Pac-Man","Bomberman"],["Master Chief","Doom Slayer"],["Kratos","Dante"],
+        ["Dante","Vergil"],["Ryu","Ken"],["Chun-Li","Cammy"],["Scorpion","Sub-Zero"],
+        ["Lara Croft","Nathan Drake"],["Geralt","Ciri"],["Ezio","Altaïr"],
+        ["Arthur Morgan","John Marston"],["Joel","Ellie"],["Leon Kennedy","Chris Redfield"],
+        ["Jill Valentine","Ada Wong"],["Solid Snake","Big Boss"],["Cloud","Sephiroth"],
+        ["Tifa","Aerith"],["Steve","Alex"],["Creeper","Enderman"],["Tracer","Widowmaker"],
+        ["Jinx","Vi"],["Yasuo","Yone"],["Teemo","Veigar"],["Sackboy","Rayman"]
+      ]
+    },
+    {
+      id:"football", label:"Football", tint:"#4FA86B",
+      pairs:[
+        ["Messi","Ronaldo"],["Mbappé","Haaland"],["Neymar","Vinicius"],["Benzema","Griezmann"],
+        ["Zidane","Platini"],["Ronaldinho","Ronaldo Nazario"],["Iniesta","Xavi"],
+        ["Pirlo","Modric"],["Kanté","Casemiro"],["Ramos","Piqué"],["Van Dijk","Rüdiger"],
+        ["Maldini","Cannavaro"],["Buffon","Casillas"],["Neuer","Courtois"],["Lloris","Maignan"],
+        ["Mbappé","Dembélé"],["Giroud","Lacazette"],["Pogba","Rabiot"],["Deschamps","Zidane"],
+        ["Guardiola","Mourinho"],["Ancelotti","Klopp"],["Bellingham","Camavinga"],
+        ["Yamal","Musiala"],["Salah","Mané"],["Lewandowski","Kane"],["Ibrahimovic","Drogba"],
+        ["Henry","Trezeguet"],["Thuram","Desailly"],["Real Madrid","Barcelone"],
+        ["Paris Saint-Germain","Marseille"]
+      ]
+    },
+    {
+      id:"rap-fr", label:"Rap français", tint:"#C86A9E",
+      pairs:[
+        ["Booba","Kaaris"],["Rohff","Booba"],["Ninho","Gazo"],["Gazo","Freeze Corleone"],
+        ["SCH","Jul"],["Jul","Naps"],["Naps","Soso Maness"],["Ademo","N.O.S"],
+        ["Nekfeu","Alpha Wann"],["Alpha Wann","Laylow"],["Laylow","Damso"],["Damso","Hamza"],
+        ["Hamza","Tiakola"],["Tiakola","Werenoi"],["Werenoi","Ninho"],["Orelsan","Gringe"],
+        ["Gringe","Vald"],["Vald","Lorenzo"],["Lorenzo","Seth Gueko"],["Kery James","Youssoupha"],
+        ["Youssoupha","Soprano"],["Soprano","Black M"],["Sexion d'Assaut","Sniper"],
+        ["IAM","NTM"],["Akhenaton","Kool Shen"],["MC Solaar","Oxmo Puccino"],
+        ["Aya Nakamura","Shay"]
+      ]
+    },
+    {
+      id:"cinema", label:"Cinéma", tint:"#D08A55",
+      pairs:[
+        ["Dark Vador","Kylo Ren"],["Luke Skywalker","Rey"],["Yoda","Obi-Wan"],
+        ["Frodon","Sam"],["Gandalf","Saroumane"],["Aragorn","Legolas"],["Gollum","Bilbon"],
+        ["Harry Potter","Ron"],["Hermione","Luna"],["Dumbledore","Rogue"],
+        ["Voldemort","Grindelwald"],["Neo","Morpheus"],["Terminator","RoboCop"],
+        ["John Wick","Jason Bourne"],["Indiana Jones","Tintin"],["Rocky","Ivan Drago"],
+        ["Forrest Gump","Truman"],["Jack Sparrow","Davy Jones"],["Vito Corleone","Tony Montana"],
+        ["Hannibal Lecter","Norman Bates"],["Alien","Predator"],["E.T.","Wall-E"],
+        ["Simba","Mufasa"],["Elsa","Anna"],["Woody","Buzz"],["Shrek","Fiona"],
+        ["Po","Maître Shifu"],["Marty McFly","Doc Brown"],["Batman","Superman"],
+        ["Iron Man","Captain America"],["Thor","Loki"],["Joker","Bane"]
+      ]
+    }
+  ];
+
+  /* ---------------------------------------------------------------------
+     IMAGES — portraits facultatifs
+     Les visuels officiels sont protégés et ne sont pas fournis. Placez vos
+     propres fichiers à côté de ce document, puis ajoutez une ligne par
+     personnage, en minuscules, sans accent ni espace :
+        "luffy": "images/luffy.jpg",
+        "sungjinwoo": "images/jinwoo.png",
+     Sans entrée, un médaillon aux initiales est généré automatiquement.
+     --------------------------------------------------------------------- */
+  var IMAGES = {
+  };
+
+  /* ================= état ================= */
+  var S = {
+    players:[], undercover:1, white:0,
+    customWords:false, mode:"solo", serieId:"random", themeId:"general",
+    people:[], order:[], dealIndex:0,
+    pair:null, unis:[null,null], pending:null, over:false,
+    scores:{}, manche:0, added:[]
+  };
+
+  function $(id){ return document.getElementById(id); }
+  var SCREENS = ["screen-setup","screen-deal","screen-play","screen-end","screen-editor","screen-settings"];
+  function show(id){
+    for (var i=0;i<SCREENS.length;i++){ $(SCREENS[i]).hidden = (SCREENS[i] !== id); }
+    window.scrollTo(0,0);
+  }
+  function shuffle(a){
+    for (var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+    return a;
+  }
+  function norm(s){
+    return String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+  }
+  function byId(list, id){
+    for (var i=0;i<list.length;i++){ if (list[i].id === id) return list[i]; }
+    return null;
+  }
+  function serieById(id){ return byId(SERIES, id); }
+  function tintOf(label){
+    var all = SERIES.concat(THEMES);
+    for (var i=0;i<all.length;i++){ if (all[i].label === label) return all[i].tint; }
+    return "#E0A93B";
+  }
+  function activeList(){ return S.mode === "theme" ? THEMES : SERIES; }
+  function activeId(){ return S.mode === "theme" ? S.themeId : S.serieId; }
+  function setActiveId(id){ if (S.mode === "theme") S.themeId = id; else S.serieId = id; }
+
+  /* ================= joueurs ================= */
+  var input = $("player-input"), toast = $("setup-toast");
+
+  function addPlayer(){
+    var name = input.value.trim().replace(/\s+/g," ");
+    if (!name){ input.focus(); return; }
+    if (S.players.length >= 20){ toast.textContent = "Vingt joueurs au maximum."; return; }
+    for (var i=0;i<S.players.length;i++){
+      if (norm(S.players[i]) === norm(name)){ toast.textContent = name + " est déjà dans la liste."; return; }
+    }
+    S.players.push(name);
+    input.value = ""; toast.textContent = ""; input.focus();
+    renderSetup();
+  }
+  $("add-player").addEventListener("click", addPlayer);
+  input.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); addPlayer(); } });
+
+  var steps = document.querySelectorAll("[data-step]");
+  for (var si=0; si<steps.length; si++){
+    steps[si].addEventListener("click", function(){
+      var key = this.getAttribute("data-step");
+      S[key] = Math.max(0, S[key] + parseInt(this.getAttribute("data-delta"),10));
+      toast.textContent = "";
+      renderSetup();
+    });
+  }
+
+  /* ================= mots : mode et série ================= */
+  $("tab-random").addEventListener("click", function(){ setWordMode(false); });
+  $("tab-custom").addEventListener("click", function(){ setWordMode(true); });
+  function setWordMode(custom){
+    S.customWords = custom;
+    $("tab-random").setAttribute("aria-pressed", String(!custom));
+    $("tab-custom").setAttribute("aria-pressed", String(custom));
+    $("pair-inputs").hidden = !custom;
+    $("theme-zone").hidden = custom;
+    renderSetup();
+  }
+
+  var modeBtns = document.querySelectorAll("[data-mode]");
+  for (var mi=0; mi<modeBtns.length; mi++){
+    modeBtns[mi].addEventListener("click", function(){
+      S.mode = this.getAttribute("data-mode");
+      for (var k=0;k<modeBtns.length;k++){
+        modeBtns[k].setAttribute("aria-pressed", String(modeBtns[k].getAttribute("data-mode") === S.mode));
+      }
+      renderSeries();
+      renderNote();
+    });
+  }
+
+  function renderSeries(){
+    var box = $("series");
+    box.innerHTML = "";
+    box.hidden = (S.mode === "mix");
+    if (S.mode === "mix") return;
+
+    var list = activeList(), cur = activeId();
+    var mk = function(id, label, wide){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      if (wide) b.className = "wide";
+      b.setAttribute("aria-pressed", String(cur === id));
+      b.addEventListener("click", function(){ setActiveId(id); renderSeries(); renderNote(); renderSetup(); });
+      box.appendChild(b);
+    };
+    mk("random", S.mode === "theme" ? "Thème au hasard" : "Anime au hasard", true);
+    list.forEach(function(s){ mk(s.id, s.label, false); });
+  }
+
+  function poolSize(){
+    if (S.mode === "mix") return CROSSOVER.length;
+    var list = activeList(), cur = activeId();
+    if (cur === "random"){
+      return list.reduce(function(n,s){ return n + eligible(s.pairs).length; }, 0);
+    }
+    var s = byId(list, cur);
+    return s ? eligible(s.pairs).length : 0;
+  }
+
+  function renderNote(){
+    var n = poolSize(), txt;
+    if (S.mode === "mix"){
+      txt = n + " duos croisés sur " + SERIES.length + " séries. Chaque carte indique son propre univers, ce qui ne trahit rien : les deux camps n'ont pas la même origine.";
+    } else if (S.mode === "theme"){
+      var t = byId(THEMES, S.themeId);
+      txt = n + " duos" + (S.themeId === "random" ? ", thème tiré au sort à chaque partie" : " pour " + (t ? t.label : "")) + ". La catégorie est annoncée à tout le monde, Mr White compris.";
+    } else if (S.serieId === "random"){
+      txt = n + " duos disponibles sur " + SERIES.length + " séries, une série tirée au sort à chaque partie. L'univers est annoncé à tout le monde, Mr White compris.";
+    } else {
+      var s = serieById(S.serieId);
+      txt = n + " duos pour " + (s ? s.label : "") + ". L'univers est annoncé à tout le monde, Mr White compris.";
+    }
+    $("theme-note").textContent = txt;
+  }
+
+  /* ================= validation ================= */
+  function counts(){
+    var n = S.players.length, imp = S.undercover + S.white;
+    return { n:n, imp:imp, civ:n - imp };
+  }
+  function problem(){
+    var c = counts();
+    if (c.n < 3) return "Ajoutez au moins trois joueurs.";
+    if (c.imp < 1) return "Il faut au moins un intrus.";
+    if (c.civ < 2) return "Il faut au moins deux civils.";
+    if (c.civ <= c.imp) return "Les civils doivent être plus nombreux que les intrus.";
+    if (S.customWords){
+      var a = $("word-civil").value.trim(), b = $("word-under").value.trim();
+      if (!a || !b) return "Renseignez les deux mots.";
+      if (norm(a) === norm(b)) return "Les deux mots doivent être différents.";
+    } else if (poolSize() === 0){
+      return "Aucun duo disponible pour cette sélection.";
+    }
+    return null;
+  }
+
+  function renderSetup(){
+    var chips = $("chips");
+    chips.innerHTML = "";
+    S.players.forEach(function(p, i){
+      var el = document.createElement("span");
+      el.className = "chip";
+      el.appendChild(document.createTextNode(p));
+      var x = document.createElement("button");
+      x.type = "button"; x.textContent = "×";
+      x.setAttribute("aria-label", "Retirer " + p);
+      x.addEventListener("click", function(){ S.players.splice(i,1); renderSetup(); });
+      el.appendChild(x);
+      chips.appendChild(el);
+    });
+    $("players-empty").hidden = S.players.length > 0;
+    $("out-undercover").textContent = S.undercover;
+    $("out-white").textContent = S.white;
+
+    var c = counts(), tally = $("tally");
+    if (c.n === 0){ tally.textContent = "En attente de joueurs."; tally.className = "tally"; }
+    else if (c.civ <= c.imp){ tally.textContent = "Les civils doivent être plus nombreux que les intrus."; tally.className = "tally bad"; }
+    else {
+      tally.textContent = c.civ + " civils · " + S.undercover + " undercover · " + S.white + " Mr White";
+      tally.className = "tally";
+    }
+    $("start").disabled = !!problem();
+  }
+  $("word-civil").addEventListener("input", renderSetup);
+  $("word-under").addEventListener("input", renderSetup);
+
+  /* ================= médaillon ================= */
+  function hashCode(s){
+    var h = 0;
+    for (var i=0;i<s.length;i++){ h = (h * 31 + s.charCodeAt(i)) | 0; }
+    return Math.abs(h);
+  }
+  function initials(name){
+    var parts = String(name).split(/[\s'-]+/).filter(Boolean);
+    var a = parts[0] ? parts[0].charAt(0) : "?";
+    var b = parts[1] ? parts[1].charAt(0) : (parts[0] && parts[0].length > 1 ? parts[0].charAt(1) : "");
+    return (a + b).toUpperCase();
+  }
+  function paintEmblem(el, name, universe, isWhite){
+    el.innerHTML = "";
+    el.style.background = "var(--sunk)";
+    if (isWhite){
+      el.style.borderColor = "var(--alert)"; el.style.color = "var(--alert)"; el.textContent = "?";
+      return;
+    }
+    el.style.color = "var(--text)";
+    el.style.borderColor = universe ? tintOf(universe) : "#E0A93B";
+    var url = IMAGES[norm(name)];
+    if (url){
+      var img = document.createElement("img");
+      img.alt = "";
+      img.addEventListener("error", function(){
+        if (img.parentNode) img.parentNode.removeChild(img);
+        el.textContent = initials(name);
+      });
+      img.src = url;
+      el.appendChild(img);
+      return;
+    }
+    var t = hashCode(norm(name)) % 360;
+    var l1 = isLight() ? 82 : 27, l2 = isLight() ? 70 : 15;
+    el.style.background = "linear-gradient(145deg, hsl(" + t + ", 40%, " + l1 + "%), hsl(" + ((t+45)%360) + ", 36%, " + l2 + "%))";
+    el.textContent = initials(name);
+  }
+
+  /* ================= distribution ================= */
+  $("start").addEventListener("click", function(){
+    var pb = problem();
+    if (pb){ toast.textContent = pb; return; }
+    deal();
+  });
+
+  function drawPair(){
+    if (S.customWords){
+      return { words:[$("word-civil").value.trim(), $("word-under").value.trim()], unis:[null,null] };
+    }
+    if (S.mode === "mix"){
+      var x = CROSSOVER[Math.floor(Math.random()*CROSSOVER.length)];
+      return { words:[x[0], x[2]], unis:[x[1], x[3]] };
+    }
+    var list = activeList(), cur = activeId();
+    var group = cur === "random" ? list[Math.floor(Math.random()*list.length)] : byId(list, cur);
+    var pool = eligible(group.pairs);
+    var p = pool[Math.floor(Math.random()*pool.length)];
+    return { words:[p[0], p[1]], unis:[group.label, group.label] };
+  }
+
+  function deal(){
+    var draw = drawPair();
+    if (Math.random() < 0.5){
+      draw.words.reverse();
+      draw.unis.reverse();
+    }
+    S.pair = draw.words;
+    S.unis = draw.unis;
+    S.uniLabel = (S.mode === "theme" && !S.customWords) ? "Catégorie" : "Univers";
+    S.manche = S.manche + 1;
+    S.players.forEach(function(n){ if (typeof S.scores[n] !== "number") S.scores[n] = 0; });
+
+    var roles = [], i;
+    for (i=0;i<S.undercover;i++) roles.push("undercover");
+    for (i=0;i<S.white;i++) roles.push("white");
+    while (roles.length < S.players.length) roles.push("civil");
+    shuffle(roles);
+
+    S.people = S.players.map(function(name, idx){
+      var role = roles[idx];
+      return {
+        name:name, role:role,
+        word: role === "civil" ? S.pair[0] : (role === "undercover" ? S.pair[1] : null),
+        uni: role === "civil" ? S.unis[0] : (role === "undercover" ? S.unis[1] : null),
+        alive:true
+      };
+    });
+
+    S.order = shuffle(S.people.slice());
+    if (RULES.whiteNotFirst && S.order[0].role === "white"){
+      for (i=1;i<S.order.length;i++){
+        if (S.order[i].role !== "white"){ var t = S.order[0]; S.order[0] = S.order[i]; S.order[i] = t; break; }
+      }
+    }
+
+    S.dealIndex = 0; S.over = false; S.pending = null;
+    show("screen-deal");
+    renderDeal();
+  }
+
+  var card = $("card"), seen = false;
+
+  function renderDeal(){
+    var p = S.people[S.dealIndex];
+    $("deal-count").textContent = (S.dealIndex+1) + " / " + S.people.length;
+    $("deal-name").textContent = p.name;
+
+    $("card-emblem").hidden = !RULES.emblem;
+    if (p.role === "white"){
+      paintEmblem($("card-emblem"), "", null, true);
+      $("card-kicker").textContent = "Aucun nom";
+      $("card-word").textContent = "Mr White";
+      $("card-word").className = "word white";
+      var common = (RULES.announce && S.unis[0] && S.unis[0] === S.unis[1]) ? S.uniLabel + " : " + S.unis[0] + ". " : "";
+      $("card-sub").textContent = common + "Écoutez les autres et faites comme si vous saviez.";
+    } else {
+      paintEmblem($("card-emblem"), p.word, p.uni, false);
+      $("card-kicker").textContent = "Votre personnage";
+      $("card-word").textContent = p.word;
+      $("card-word").className = "word";
+      $("card-sub").textContent = (RULES.announce && p.uni) ? S.uniLabel + " : " + p.uni : "";
+    }
+
+    seen = false;
+    closeCard();
+    $("deal-next").disabled = true;
+    $("deal-next").textContent = (S.dealIndex === S.people.length - 1) ? "Commencer la partie" : "Suivant";
+    $("deal-note").textContent = "Personne d'autre ne doit regarder l'écran.";
+  }
+
+  function openCard(){
+    card.classList.add("open");
+    if (!seen){
+      seen = true;
+      $("deal-next").disabled = false;
+      $("deal-note").textContent = "Relâchez, puis passez le téléphone.";
+    }
+  }
+  function closeCard(){ card.classList.remove("open"); }
+
+  if (window.PointerEvent){
+    card.addEventListener("pointerdown", function(e){ e.preventDefault(); openCard(); });
+  } else {
+    card.addEventListener("touchstart", function(e){ e.preventDefault(); openCard(); }, {passive:false});
+    card.addEventListener("mousedown", function(e){ e.preventDefault(); openCard(); });
+  }
+  window.addEventListener("pointerup", closeCard);
+  window.addEventListener("pointercancel", closeCard);
+  window.addEventListener("mouseup", closeCard);
+  window.addEventListener("touchend", closeCard);
+  window.addEventListener("touchcancel", closeCard);
+  window.addEventListener("blur", closeCard);
+  card.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  card.addEventListener("keydown", function(e){ if (e.key === " " || e.key === "Enter"){ e.preventDefault(); openCard(); } });
+  card.addEventListener("keyup", function(e){ if (e.key === " " || e.key === "Enter"){ closeCard(); } });
+
+  $("deal-next").addEventListener("click", function(){
+    closeCard();
+    if (S.dealIndex < S.people.length - 1){ S.dealIndex++; renderDeal(); }
+    else { startPlay(); }
+  });
+
+  /* ================= partie ================= */
+  function startPlay(){
+    $("guess-block").hidden = true;
+    $("verdict-slot").innerHTML = "";
+    $("confirm-slot").innerHTML = "";
+    show("screen-play");
+    renderPlay();
+  }
+
+  function renderPlay(){
+    var ol = $("order");
+    ol.innerHTML = "";
+    S.order.forEach(function(p){
+      var li = document.createElement("li");
+      li.textContent = p.name;
+      if (!p.alive) li.className = "out";
+      ol.appendChild(li);
+    });
+
+    var grid = $("people");
+    grid.innerHTML = "";
+    S.people.forEach(function(p){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "person"; b.textContent = p.name;
+      b.disabled = !p.alive || S.over;
+      b.setAttribute("aria-pressed", String(S.pending === p));
+      b.addEventListener("click", function(){ askElimination(p); });
+      grid.appendChild(b);
+    });
+  }
+
+  function askElimination(p){
+    S.pending = p;
+    var slot = $("confirm-slot");
+    slot.innerHTML = "";
+    var box = document.createElement("div");
+    box.className = "confirm";
+    var q = document.createElement("p");
+    q.textContent = "Éliminer " + p.name + " ?";
+    var row = document.createElement("div");
+    row.className = "row";
+    var yes = document.createElement("button");
+    yes.type = "button"; yes.className = "btn-danger"; yes.textContent = "Éliminer";
+    yes.addEventListener("click", function(){ eliminate(p); });
+    var no = document.createElement("button");
+    no.type = "button"; no.className = "btn-mini"; no.textContent = "Annuler";
+    no.addEventListener("click", function(){ S.pending = null; slot.innerHTML = ""; renderPlay(); });
+    row.appendChild(yes); row.appendChild(no);
+    box.appendChild(q); box.appendChild(row);
+    slot.appendChild(box);
+    renderPlay();
+  }
+
+  function eliminate(p){
+    if (!p.alive || S.over) return;
+    p.alive = false;
+    S.pending = null;
+    $("confirm-slot").innerHTML = "";
+
+    var slot = $("verdict-slot");
+    slot.innerHTML = "";
+    var v = document.createElement("p");
+    var strong = document.createElement("strong");
+    strong.textContent = p.name;
+    if (RULES.hideRoles){
+      v.className = "verdict";
+      v.appendChild(strong);
+      v.appendChild(document.createTextNode(" est éliminé. Son rôle ne sera révélé qu'à la fin."));
+    } else {
+      var label = p.role === "civil" ? "un civil" : (p.role === "undercover" ? "un undercover" : "Mr White");
+      v.className = "verdict " + (p.role === "civil" ? "civil" : "imposteur");
+      v.appendChild(strong);
+      v.appendChild(document.createTextNode(" était " + label + "."));
+    }
+    slot.appendChild(v);
+
+    renderPlay();
+
+    if (p.role === "white" && RULES.whiteGuess && !finished()){
+      S.whiteGuesser = p;
+      $("guess-block").hidden = false;
+      $("guess-input").value = "";
+      return;
+    }
+    checkEnd();
+  }
+
+  function alive(role){
+    return S.people.filter(function(p){ return p.alive && (role ? p.role === role : true); }).length;
+  }
+  function impostersWin(){
+    var imp = alive("undercover") + alive("white"), civ = alive("civil");
+    return RULES.tieWins ? (imp >= civ) : (imp > civ);
+  }
+  function finished(){
+    var imp = alive("undercover") + alive("white");
+    return imp === 0 || impostersWin();
+  }
+  function checkEnd(){
+    var imp = alive("undercover") + alive("white");
+    if (imp === 0) finish("civil", "Tous les intrus ont été démasqués.");
+    else if (impostersWin()) finish("imposteur", RULES.tieWins
+      ? "Les intrus sont aussi nombreux que les civils : ils prennent la main."
+      : "Les intrus sont désormais plus nombreux que les civils.");
+  }
+
+  $("guess-submit").addEventListener("click", function(){
+    var g = $("guess-input").value;
+    $("guess-block").hidden = true;
+    if (norm(g) && norm(g) === norm(S.pair[0])) finish("imposteur", "Mr White a trouvé le personnage des civils : " + S.pair[0] + ".", S.whiteGuesser);
+    else checkEnd();
+  });
+  $("guess-skip").addEventListener("click", function(){
+    $("guess-block").hidden = true;
+    checkEnd();
+  });
+
+  var revealArmed = false;
+  $("reveal-all").addEventListener("click", function(){
+    if (!revealArmed){
+      revealArmed = true;
+      this.textContent = "Confirmer : tout révéler";
+      return;
+    }
+    revealArmed = false;
+    this.textContent = "Arrêter et tout révéler";
+    finish(null, "Partie interrompue.");
+  });
+
+  /* ================= fin ================= */
+  function awardPoints(winner, guesser){
+    S.people.forEach(function(p){
+      var d = 0;
+      var pts = RULES.points;
+      if (winner === "civil" && p.role === "civil"){ d = p.alive ? pts.civilAlive : pts.civilDead; }
+      else if (winner === "imposteur"){
+        if (p.role === "undercover") d = pts.undercover;
+        else if (p.role === "white") d = (p === guesser) ? pts.whiteGuess : pts.white;
+      }
+      p.delta = d;
+      if (d) S.scores[p.name] = (S.scores[p.name] || 0) + d;
+    });
+  }
+
+  function renderScores(){
+    $("manche-no").textContent = S.manche;
+    var pts = RULES.points;
+    $("score-rule").textContent = "Civil vainqueur : " + pts.civilAlive + " points s'il est en vie, " +
+      pts.civilDead + " sinon. Undercover : " + pts.undercover + ". Mr White : " + pts.white +
+      (RULES.whiteGuess ? ", " + pts.whiteGuess + " s'il devine le mot" : "") +
+      ". Partie interrompue : aucun point.";
+    var list = $("score-list");
+    list.innerHTML = "";
+    var names = Object.keys(S.scores);
+    names.sort(function(a,b){ return S.scores[b] - S.scores[a] || a.localeCompare(b); });
+    names.forEach(function(n, i){
+      var person = null;
+      S.people.forEach(function(p){ if (p.name === n) person = p; });
+      var li = document.createElement("li");
+      var left = document.createElement("span");
+      left.textContent = (i+1) + ". " + n;
+      if (person && person.delta){
+        var small = document.createElement("small");
+        small.textContent = "+" + person.delta + " cette manche";
+        left.appendChild(small);
+      }
+      var pts = document.createElement("span");
+      pts.className = "tag undercover";
+      pts.textContent = S.scores[n] + " pts";
+      li.appendChild(left); li.appendChild(pts);
+      list.appendChild(li);
+    });
+  }
+
+  $("reset-scores").addEventListener("click", function(){
+    S.scores = {}; S.manche = 0;
+    S.people.forEach(function(p){ p.delta = 0; });
+    renderScores();
+  });
+
+  function finish(winner, why, guesser){
+    S.over = true;
+    awardPoints(winner, guesser);
+    $("end-banner").className = "banner" + (winner ? " " + winner : "");
+    $("end-who").textContent = winner === "civil" ? "Les civils" : (winner === "imposteur" ? "Les intrus" : "Aucun camp");
+
+    var recap = " Duo : " + S.pair[0] + (S.unis[0] ? " (" + S.unis[0] + ")" : "") +
+                " contre " + S.pair[1] + (S.unis[1] ? " (" + S.unis[1] + ")" : "") + ".";
+    $("end-why").textContent = why + recap;
+
+    var list = $("end-list");
+    list.innerHTML = "";
+    S.people.forEach(function(p){
+      var li = document.createElement("li");
+      var left = document.createElement("span");
+      left.textContent = p.name + (p.word ? " — " + p.word : "");
+      if (p.uni){
+        var small = document.createElement("small");
+        small.textContent = p.uni;
+        left.appendChild(small);
+      }
+      var tag = document.createElement("span");
+      tag.className = "tag " + p.role;
+      tag.textContent = p.role === "civil" ? "Civil" : (p.role === "undercover" ? "Undercover" : "Mr White");
+      li.appendChild(left); li.appendChild(tag);
+      list.appendChild(li);
+    });
+    renderScores();
+    show("screen-end");
+  }
+
+  $("replay").addEventListener("click", function(){ deal(); });
+  $("restart").addEventListener("click", function(){
+    S.people = []; S.order = []; S.over = false; S.pending = null;
+    show("screen-setup");
+    renderSetup();
+  });
+
+  /* ================= apparence et règles ================= */
+  var DEFAULT_RULES = {
+    whiteGuess:true, whiteNotFirst:true, announce:true, emblem:true, tieWins:true, hideRoles:false,
+    points:{ civilAlive:3, civilDead:2, undercover:4, white:6, whiteGuess:8 }
+  };
+  var RULES = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  var APPEARANCE = "auto";
+  var DIFF = 2;
+
+  var DIFF_PRESETS = {
+    1:{ announce:true,  emblem:true,  whiteGuess:true,  tieWins:false, hideRoles:false },
+    2:{ announce:true,  emblem:true,  whiteGuess:true,  tieWins:true,  hideRoles:false },
+    3:{ announce:false, emblem:false, whiteGuess:false, tieWins:true,  hideRoles:true }
+  };
+  var DIFF_LABELS = { 1:"Facile", 2:"Intermédiaire", 3:"Hardcore" };
+
+  function applyDifficulty(level){
+    DIFF = level;
+    var preset = DIFF_PRESETS[level];
+    Object.keys(preset).forEach(function(k){ RULES[k] = preset[k]; });
+    var btns = document.querySelectorAll("[data-diff]");
+    for (var i=0;i<btns.length;i++){
+      btns[i].setAttribute("aria-pressed", String(parseInt(btns[i].getAttribute("data-diff"),10) === level));
+    }
+    renderRules();
+    renderNote();
+    renderDiffNote();
+    renderSetup();
+  }
+
+  function eligible(pairs){
+    var f = pairs.filter(function(p){ return !p[2] || p[2] === DIFF; });
+    return f.length ? f : pairs;
+  }
+
+  function renderDiffNote(){
+    var tagged = 0, total = 0;
+    THEMES.concat(SERIES).forEach(function(g){
+      g.pairs.forEach(function(p){ total++; if (p[2]) tagged++; });
+    });
+    $("diff-note").textContent = "Niveau " + DIFF_LABELS[DIFF].toLowerCase() +
+      ". Le filtrage par niveau s'applique aux " + tagged + " duos étiquetés, aujourd'hui ceux de « Tout public ». Les autres groupes restent proposés à tous les niveaux, mais les règles d'assistance changent quand même.";
+  }
+
+  function applyAppearance(){
+    var light;
+    if (APPEARANCE === "light") light = true;
+    else if (APPEARANCE === "dark") light = false;
+    else light = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+    document.body.classList.toggle("light", light);
+    var meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.setAttribute("content", light ? "#F5F2EA" : "#0E1420");
+  }
+  function isLight(){ return document.body.classList.contains("light"); }
+
+  var appBtns = document.querySelectorAll("[data-appearance]");
+  for (var ai=0; ai<appBtns.length; ai++){
+    appBtns[ai].addEventListener("click", function(){
+      APPEARANCE = this.getAttribute("data-appearance");
+      for (var k=0;k<appBtns.length;k++){
+        appBtns[k].setAttribute("aria-pressed", String(appBtns[k].getAttribute("data-appearance") === APPEARANCE));
+      }
+      applyAppearance();
+    });
+  }
+  if (window.matchMedia){
+    var mq = window.matchMedia("(prefers-color-scheme: light)");
+    var onChange = function(){ if (APPEARANCE === "auto") applyAppearance(); };
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+
+  var RULE_DEFS = [
+    { key:"whiteGuess", label:"Mr White peut deviner", note:"Un essai au moment de son élimination" },
+    { key:"whiteNotFirst", label:"Mr White jamais premier", note:"Il ne parle jamais en ouverture du tour" },
+    { key:"announce", label:"Annoncer l'univers", note:"La série ou la catégorie figure sur les cartes" },
+    { key:"emblem", label:"Afficher le médaillon", note:"Pastille illustrée au-dessus du nom" },
+    { key:"tieWins", label:"Les intrus gagnent à égalité", note:"Sinon ils doivent être strictement plus nombreux" },
+    { key:"hideRoles", label:"Cacher les rôles éliminés", note:"Le camp de l'éliminé n'est révélé qu'à la fin" }
+  ];
+  var POINT_DEFS = [
+    { key:"civilAlive", label:"Civil vainqueur en vie" },
+    { key:"civilDead", label:"Civil vainqueur éliminé" },
+    { key:"undercover", label:"Undercover vainqueur" },
+    { key:"white", label:"Mr White vainqueur" },
+    { key:"whiteGuess", label:"Mr White qui devine" }
+  ];
+
+  function renderRules(){
+    var box = $("rules-list");
+    box.innerHTML = "";
+    RULE_DEFS.forEach(function(def){
+      var row = document.createElement("div");
+      row.className = "stepper";
+      var lab = document.createElement("span");
+      lab.className = "stepper-label";
+      lab.appendChild(document.createTextNode(def.label));
+      var note = document.createElement("span");
+      note.className = "stepper-note"; note.textContent = def.note;
+      lab.appendChild(note);
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "btn-mini";
+      b.setAttribute("aria-pressed", String(!!RULES[def.key]));
+      b.textContent = RULES[def.key] ? "Activé" : "Désactivé";
+      b.style.borderColor = RULES[def.key] ? "var(--amber)" : "var(--edge)";
+      b.style.color = RULES[def.key] ? "var(--amber-soft)" : "var(--muted)";
+      b.addEventListener("click", function(){ RULES[def.key] = !RULES[def.key]; renderRules(); });
+      row.appendChild(lab); row.appendChild(b);
+      box.appendChild(row);
+    });
+
+    var pbox = $("points-list");
+    pbox.innerHTML = "";
+    POINT_DEFS.forEach(function(def){
+      var row = document.createElement("div");
+      row.className = "stepper";
+      var lab = document.createElement("span");
+      lab.className = "stepper-label"; lab.textContent = def.label;
+      var ctrl = document.createElement("span");
+      ctrl.className = "stepper-ctrl";
+      var minus = document.createElement("button");
+      minus.type = "button"; minus.textContent = "\u2212";
+      minus.setAttribute("aria-label", "Moins un point pour " + def.label);
+      var out = document.createElement("output");
+      out.textContent = RULES.points[def.key];
+      var plus = document.createElement("button");
+      plus.type = "button"; plus.textContent = "+";
+      plus.setAttribute("aria-label", "Un point de plus pour " + def.label);
+      minus.addEventListener("click", function(){ RULES.points[def.key] = Math.max(0, RULES.points[def.key] - 1); renderRules(); });
+      plus.addEventListener("click", function(){ RULES.points[def.key] = Math.min(20, RULES.points[def.key] + 1); renderRules(); });
+      ctrl.appendChild(minus); ctrl.appendChild(out); ctrl.appendChild(plus);
+      row.appendChild(lab); row.appendChild(ctrl);
+      pbox.appendChild(row);
+    });
+  }
+
+  $("rules-reset").addEventListener("click", function(){
+    RULES = JSON.parse(JSON.stringify(DEFAULT_RULES));
+    renderRules();
+  });
+  $("open-settings").addEventListener("click", function(){ renderRules(); show("screen-settings"); });
+  $("settings-back").addEventListener("click", function(){ show("screen-setup"); renderSetup(); });
+
+  /* ================= éditeur de duos ================= */
+  var ED = { dest:"serie" };
+
+  function slug(label){
+    var base = norm(label) || "theme";
+    var id = base, k = 2;
+    while (byId(SERIES, id) || byId(THEMES, id)){ id = base + "-" + k; k++; }
+    return id;
+  }
+  function tintFrom(label){
+    var t = hashCode(norm(label)) % 360;
+    return "hsl(" + t + ", 45%, 55%)";
+  }
+  function mkSelect(id, list, withNew, newLabel){
+    var wrap = document.createElement("div");
+    var lab = document.createElement("label");
+    lab.className = "field-label";
+    lab.setAttribute("for", id);
+    lab.textContent = newLabel || "Groupe";
+    var sel = document.createElement("select");
+    sel.id = id;
+    list.forEach(function(g){
+      var o = document.createElement("option");
+      o.value = g.id; o.textContent = g.label;
+      sel.appendChild(o);
+    });
+    if (withNew){
+      var o2 = document.createElement("option");
+      o2.value = "__new__"; o2.textContent = "— Créer un nouveau groupe —";
+      sel.appendChild(o2);
+    }
+    wrap.appendChild(lab); wrap.appendChild(sel);
+    return wrap;
+  }
+
+  function renderDest(){
+    var box = $("dest-fields");
+    box.innerHTML = "";
+    if (ED.dest === "serie" || ED.dest === "theme"){
+      var list = ED.dest === "serie" ? SERIES : THEMES;
+      box.appendChild(mkSelect("ed-group", list, true, ED.dest === "serie" ? "Série" : "Thème"));
+      var nw = document.createElement("div");
+      nw.id = "ed-new-wrap";
+      nw.hidden = true;
+      var lab = document.createElement("label");
+      lab.className = "field-label"; lab.setAttribute("for","ed-new"); lab.textContent = "Nom du nouveau groupe";
+      var inp = document.createElement("input");
+      inp.type = "text"; inp.id = "ed-new"; inp.maxLength = 28; inp.autocomplete = "off";
+      nw.appendChild(lab); nw.appendChild(inp);
+      box.appendChild(nw);
+      $("ed-group").addEventListener("change", function(){
+        $("ed-new-wrap").hidden = (this.value !== "__new__");
+      });
+    } else {
+      box.appendChild(mkSelect("ed-sa", SERIES, false, "Série du premier nom"));
+      box.appendChild(mkSelect("ed-sb", SERIES, false, "Série du second nom"));
+    }
+  }
+
+  var destBtns = document.querySelectorAll("[data-dest]");
+  for (var di=0; di<destBtns.length; di++){
+    destBtns[di].addEventListener("click", function(){
+      ED.dest = this.getAttribute("data-dest");
+      for (var k=0;k<destBtns.length;k++){
+        destBtns[k].setAttribute("aria-pressed", String(destBtns[k].getAttribute("data-dest") === ED.dest));
+      }
+      $("ed-toast").textContent = "";
+      renderDest();
+    });
+  }
+
+  function renderAdded(){
+    var list = $("ed-list");
+    list.innerHTML = "";
+    $("ed-count").textContent = S.added.length;
+    $("ed-empty").hidden = S.added.length > 0;
+    S.added.forEach(function(item, idx){
+      var li = document.createElement("li");
+      var left = document.createElement("span");
+      left.textContent = item.a + " / " + item.b;
+      var small = document.createElement("small");
+      small.textContent = item.kind === "cross" ? (item.sa + " · " + item.sb) : item.label;
+      left.appendChild(small);
+      var del = document.createElement("button");
+      del.type = "button"; del.className = "btn-mini"; del.textContent = "Retirer";
+      del.addEventListener("click", function(){ removeAdded(idx); });
+      li.appendChild(left); li.appendChild(del);
+      list.appendChild(li);
+    });
+  }
+
+  function removeAdded(idx){
+    var item = S.added[idx];
+    if (!item) return;
+    if (item.kind === "cross"){
+      for (var i=0;i<CROSSOVER.length;i++){
+        if (CROSSOVER[i][0] === item.a && CROSSOVER[i][2] === item.b){ CROSSOVER.splice(i,1); break; }
+      }
+    } else {
+      var group = byId(item.kind === "serie" ? SERIES : THEMES, item.groupId);
+      if (group){
+        for (var j=0;j<group.pairs.length;j++){
+          if (group.pairs[j][0] === item.a && group.pairs[j][1] === item.b){ group.pairs.splice(j,1); break; }
+        }
+      }
+    }
+    S.added.splice(idx,1);
+    renderAdded();
+    renderSeries(); renderNote(); renderSetup();
+  }
+
+  $("ed-add").addEventListener("click", function(){
+    var a = $("ed-a").value.trim().replace(/\s+/g," ");
+    var b = $("ed-b").value.trim().replace(/\s+/g," ");
+    var t = $("ed-toast");
+    if (!a || !b){ t.textContent = "Renseignez les deux noms."; return; }
+    if (norm(a) === norm(b)){ t.textContent = "Les deux noms doivent être différents."; return; }
+
+    if (ED.dest === "cross"){
+      var sa = byId(SERIES, $("ed-sa").value), sb = byId(SERIES, $("ed-sb").value);
+      if (!sa || !sb || sa === sb){ t.textContent = "Choisissez deux séries différentes."; return; }
+      CROSSOVER.push([a, sa.label, b, sb.label]);
+      S.added.push({ kind:"cross", a:a, b:b, sa:sa.label, sb:sb.label });
+    } else {
+      var isSerie = ED.dest === "serie";
+      var list = isSerie ? SERIES : THEMES;
+      var val = $("ed-group").value, group;
+      if (val === "__new__"){
+        var label = $("ed-new").value.trim();
+        if (!label){ t.textContent = "Nommez le nouveau groupe."; return; }
+        group = { id:slug(label), label:label, tint:tintFrom(label), pairs:[] };
+        list.push(group);
+      } else {
+        group = byId(list, val);
+      }
+      if (!group){ t.textContent = "Groupe introuvable."; return; }
+      group.pairs.push([a, b]);
+      S.added.push({ kind:isSerie ? "serie" : "theme", a:a, b:b, groupId:group.id, label:group.label });
+    }
+
+    $("ed-a").value = ""; $("ed-b").value = "";
+    t.textContent = "";
+    $("ed-a").focus();
+    renderDest();
+    renderAdded();
+    renderSeries(); renderNote(); renderSetup();
+  });
+
+  function esc(s){ return String(s).replace(/"/g, '\\"'); }
+
+  $("ed-export").addEventListener("click", function(){
+    if (!S.added.length){ $("ed-toast").textContent = "Aucun ajout à exporter."; return; }
+    var groups = {}, cross = [], out = [];
+    S.added.forEach(function(it){
+      if (it.kind === "cross"){
+        cross.push('    ["' + esc(it.a) + '","' + esc(it.sa) + '","' + esc(it.b) + '","' + esc(it.sb) + '"],');
+      } else {
+        var key = it.kind + "|" + it.groupId + "|" + it.label;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push('["' + esc(it.a) + '","' + esc(it.b) + '"],');
+      }
+    });
+    Object.keys(groups).forEach(function(key){
+      var parts = key.split("|");
+      var kind = parts[0], gid = parts[1], label = parts[2];
+      var list = kind === "serie" ? SERIES : THEMES;
+      var group = byId(list, gid);
+      var isNew = group && group.pairs.length === groups[key].length;
+      if (isNew){
+        out.push("/* Nouveau groupe : à coller dans " + (kind === "serie" ? "SERIES" : "THEMES") + " */");
+        out.push('    {');
+        out.push('      id:"' + gid + '", label:"' + esc(label) + '", tint:"' + (group ? group.tint : "#E0A93B") + '",');
+        out.push('      pairs:[');
+        out.push('        ' + groups[key].join("").replace(/,$/, ""));
+        out.push('      ]');
+        out.push('    },');
+      } else {
+        out.push("/* À coller dans le tableau pairs de « " + label + " » */");
+        out.push('        ' + groups[key].join(""));
+      }
+      out.push("");
+    });
+    if (cross.length){
+      out.push("/* À coller dans CROSSOVER */");
+      out = out.concat(cross);
+    }
+    $("ed-out").value = out.join("\n");
+    $("ed-out").hidden = false;
+    $("ed-copy").hidden = false;
+    $("ed-toast").textContent = "";
+  });
+
+  $("ed-copy").addEventListener("click", function(){
+    var ta = $("ed-out"), btn = this;
+    var done = function(){ btn.textContent = "Copié"; setTimeout(function(){ btn.textContent = "Copier dans le presse-papier"; }, 1600); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(ta.value).then(done, function(){ ta.select(); });
+        return;
+      }
+    } catch(e){}
+    ta.select();
+    btn.textContent = "Sélectionné : copiez manuellement";
+  });
+
+  $("open-editor").addEventListener("click", function(){
+    renderDest(); renderAdded();
+    show("screen-editor");
+  });
+  $("ed-back").addEventListener("click", function(){
+    show("screen-setup");
+    renderSetup();
+  });
+
+  /* ================= amorçage ================= */
+  applyAppearance();
+  var diffBtns = document.querySelectorAll("[data-diff]");
+  for (var qi=0; qi<diffBtns.length; qi++){
+    diffBtns[qi].addEventListener("click", function(){
+      applyDifficulty(parseInt(this.getAttribute("data-diff"),10));
+    });
+  }
+  renderRules();
+  renderDiffNote();
+  renderSeries();
+  renderNote();
+  renderSetup();
+})();
+</script>
+</body>
+</html>

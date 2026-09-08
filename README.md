@@ -1,0 +1,73 @@
+# Undercover — Service spécial
+
+Jeu de déduction sociale en français, jouable de deux façons :
+
+- **Un seul téléphone** : l'appareil circule, chacun lit son mot en secret puis vote à son tour. Aucun serveur, aucune connexion requise.
+- **En ligne** : un salon avec un code à quatre lettres, chaque joueur sur son propre téléphone. S'appuie sur Firebase (Realtime Database + connexion anonyme).
+
+## Lancer l'application
+
+Sans installation : ouvrez `index.html` dans un navigateur. Pour un test plus proche de la production :
+
+```bash
+node tools/serve.js
+```
+
+puis rendez-vous sur http://localhost:5173. Le site est entièrement statique : GitHub Pages, Netlify, Vercel ou Firebase Hosting conviennent tels quels.
+
+## Activer le mode en ligne (Firebase)
+
+1. Créez un projet sur https://console.firebase.google.com.
+2. **Authentication → Sign-in method** : activez **Anonymous**.
+3. **Realtime Database** : créez une base (région au choix), puis collez le contenu de `database.rules.json` dans l'onglet **Règles** et publiez.
+4. **Paramètres du projet → Vos applications → Web** : créez une application et copiez l'objet de configuration dans `firebase-config.js`.
+5. Si vous hébergez le site sur un domaine, ajoutez-le dans **Authentication → Settings → Authorized domains**.
+
+Tant que `apiKey` vaut `REMPLACER_MOI`, les boutons « Créer un salon » et « Rejoindre » restent désactivés et le mode local fonctionne normalement.
+
+### Ce que garantissent les règles
+
+- Chaque joueur ne peut lire que **sa** carte (`private/{uid}`).
+- Seul l'hôte lit l'état complet (`full`) et écrit l'état public (`game`), les scores et l'historique.
+- Les joueurs n'écrivent que leurs propres actions (`actions/*`) et leur propre présence (`members/{uid}`).
+- Si l'hôte se déconnecte plus de cinq secondes, le joueur connecté le plus ancien reprend la main automatiquement.
+
+## Règles implémentées
+
+- 3 joueurs minimum, 20 maximum. Civils, Undercover (1 à N) et Mr White (0 à N) ; les civils doivent rester majoritaires.
+- Tour de description dans l'ordre affiché, avec minuteur optionnel (0 à 180 s). Le mot secret ne peut pas apparaître dans une description.
+- Vote secret, un vote par joueur (un second vote remplace le premier). Le vote se clôt quand tout le monde a voté ; en ligne, l'hôte peut le clore sans attendre les absents.
+- Égalité : au choix « second vote entre ex æquo, puis personne n'est éliminé » ou « personne n'est éliminé ».
+- Mr White éliminé propose un mot : s'il trouve celui des civils, les intrus gagnent aussitôt (désactivable).
+- Victoire des civils quand tous les intrus sont éliminés ; victoire des intrus à parité (ou en majorité stricte, selon le réglage).
+- Joueur qui quitte : retiré de la partie, ses votes annulés, son tour passé ; la partie s'arrête s'il reste moins de trois joueurs.
+- Reconnexion : en local, la partie en cours est sauvegardée sur l'appareil ; en ligne, l'identité anonyme et le code du salon sont conservés, l'écran d'accueil propose de rejoindre.
+
+## Structure
+
+| Fichier | Rôle |
+| --- | --- |
+| `index.html` | Tous les écrans (accueil, configuration, salon, cartes, partie, fin, paramètres, éditeur) |
+| `css/style.css` | Thème sombre/clair |
+| `js/words.js` | **Banque de mots** : 472 paires « Tout public » étiquetées par niveau, 19 séries d'anime, 169 duos croisés, 4 thèmes |
+| `js/wordbank.js` | Tirage d'une paire selon la sélection et la difficulté |
+| `js/engine.js` | Moteur de jeu pur (rôles, tours, votes, égalités, Mr White, victoire, départs) |
+| `js/ui.js` | Rendu partagé des écrans de partie |
+| `js/local.js` | Contrôleur « un seul téléphone » |
+| `js/online.js` | Contrôleur Firebase (salon, présence, migration d'hôte, file d'actions) |
+| `js/app.js` | Accueil, configuration, paramètres, éditeur de duos, câblage des boutons |
+| `js/store.js` | Accès à localStorage |
+| `firebase-config.js` | Clés Firebase (à remplir) |
+| `database.rules.json` | Règles de sécurité de la Realtime Database |
+| `tests/engine.test.js` | Tests du moteur |
+| `legacy/service-special.html` | Version d'origine, conservée pour référence |
+
+## Ajouter des mots
+
+Modifiez `js/words.js` : une paire « Tout public » s'écrit `["Mot A","Mot B", niveau]` avec un niveau de 1 (facile) à 3 (hardcore). L'éditeur intégré permet aussi d'ajouter des duos depuis l'application ; ils sont conservés sur l'appareil et exportables sous forme de code à coller dans le fichier.
+
+## Tests
+
+```bash
+node --test tests/engine.test.js
+```

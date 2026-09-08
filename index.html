@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1420">
+<title>Undercover — Service spécial</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ACCUEIL -->
+  <section id="screen-home">
+    <p class="eyebrow">Dossier — niveau <b>confidentiel</b></p>
+    <h1>Under<br>cover</h1>
+    <p class="lede">Tout le monde reçoit le même mot. Sauf les intrus, qui devront le deviner sans se faire repérer.</p>
+
+    <div class="block accent" id="home-resume-block" hidden>
+      <h2>Reprendre</h2>
+      <button class="btn" id="home-resume-local" type="button" hidden>Reprendre la partie en cours</button>
+      <button class="btn" id="home-resume-online" type="button" hidden>Rejoindre le salon</button>
+      <button class="btn-ghost" id="home-forget" type="button">Oublier cette partie</button>
+    </div>
+
+    <div class="block">
+      <h2>Un seul téléphone</h2>
+      <p class="note">Le téléphone circule : chacun lit son mot en secret, puis vote à son tour.</p>
+      <button class="btn" id="home-local" type="button">Jouer sur cet appareil</button>
+    </div>
+
+    <div class="block">
+      <h2>En ligne, chacun sur son téléphone</h2>
+      <div>
+        <label class="field-label" for="home-name">Votre prénom</label>
+        <input type="text" id="home-name" placeholder="Prénom" autocomplete="off" maxlength="18">
+      </div>
+      <button class="btn" id="home-create" type="button" style="margin-top:12px">Créer un salon</button>
+      <div class="row" style="margin-top:10px">
+        <div class="grow"><input type="text" id="home-join-code" class="code" placeholder="CODE" autocomplete="off" maxlength="4" autocapitalize="characters"></div>
+        <button class="btn-mini" id="home-join" type="button">Rejoindre</button>
+      </div>
+      <p class="toast" id="home-toast"></p>
+      <p class="theme-note" id="home-online-note"></p>
+    </div>
+
+    <button class="btn-ghost" id="open-settings" type="button">Paramètres et règles du jeu</button>
+    <button class="btn-ghost" id="open-editor" type="button">Éditeur de duos : ajouter et exporter</button>
+  </section>
+
+  <!-- CONFIGURATION LOCALE -->
+  <section id="screen-setup" hidden>
+    <p class="eyebrow">Un seul <b>téléphone</b></p>
+    <h1 class="small">Préparer<br>la partie</h1>
+
+    <div class="block">
+      <h2>Joueurs</h2>
+      <div class="row">
+        <div class="grow"><input type="text" id="player-input" placeholder="Prénom" autocomplete="off" enterkeyhint="done" maxlength="18"></div>
+        <button class="btn-mini" id="add-player" type="button">Ajouter</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <p class="empty" id="players-empty">Ajoutez au moins trois joueurs.</p>
+      <p class="toast" id="setup-toast"></p>
+    </div>
+
+    <div id="config-slot-local"></div>
+
+    <button class="btn" id="start" type="button" disabled>Distribuer les rôles</button>
+    <button class="btn-ghost" id="setup-back" type="button">Retour à l'accueil</button>
+  </section>
+
+  <!-- PANNEAU DE CONFIGURATION (déplacé entre l'écran local et le salon) -->
+  <div id="config-panel">
+    <div class="block">
+      <h2>Intrus</h2>
+      <div class="stepper">
+        <span class="stepper-label">Undercover<span class="stepper-note">Reçoivent un mot voisin</span></span>
+        <span class="stepper-ctrl">
+          <button type="button" data-step="undercover" data-delta="-1" aria-label="Un undercover de moins">&minus;</button>
+          <output id="out-undercover">1</output>
+          <button type="button" data-step="undercover" data-delta="1" aria-label="Un undercover de plus">+</button>
+        </span>
+      </div>
+      <div class="stepper">
+        <span class="stepper-label">Mr White<span class="stepper-note">Ne reçoit aucun mot</span></span>
+        <span class="stepper-ctrl">
+          <button type="button" data-step="white" data-delta="-1" aria-label="Un Mr White de moins">&minus;</button>
+          <output id="out-white">0</output>
+          <button type="button" data-step="white" data-delta="1" aria-label="Un Mr White de plus">+</button>
+        </span>
+      </div>
+      <p class="tally" id="tally-config">En attente de joueurs.</p>
+    </div>
+
+    <div class="block">
+      <h2>Tour de parole</h2>
+      <div class="stepper">
+        <span class="stepper-label">Temps par description<span class="stepper-note">Le tour passe automatiquement à zéro</span></span>
+        <span class="stepper-ctrl">
+          <button type="button" data-step="timer" data-delta="-15" aria-label="Quinze secondes de moins">&minus;</button>
+          <output id="out-timer">Aucun</output>
+          <button type="button" data-step="timer" data-delta="15" aria-label="Quinze secondes de plus">+</button>
+        </span>
+      </div>
+      <div class="stepper" style="display:block">
+        <span class="stepper-label">Égalité au vote</span>
+        <div class="tabs" role="group" aria-label="Règle d'égalité" style="margin-top:8px">
+          <button type="button" data-tie="revote" aria-pressed="true">Second vote, puis personne</button>
+          <button type="button" data-tie="none" aria-pressed="false">Personne n'est éliminé</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Difficulté</h2>
+      <div class="modes" id="difficulty" role="group" aria-label="Niveau de difficulté">
+        <button type="button" data-diff="1" aria-pressed="false"><b>Facile</b><span>Duos éloignés, indices affichés, les intrus doivent être strictement plus nombreux pour l'emporter.</span></button>
+        <button type="button" data-diff="2" aria-pressed="true"><b>Intermédiaire</b><span>Duos proches sans être ambigus, règles classiques.</span></button>
+        <button type="button" data-diff="3" aria-pressed="false"><b>Hardcore</b><span>Duos presque synonymes, aucun indice sur les cartes, rôles cachés jusqu'à la fin, Mr White ne devine pas.</span></button>
+      </div>
+      <p class="theme-note" id="diff-note"></p>
+    </div>
+
+    <div class="block">
+      <h2>Mots</h2>
+      <div class="tabs" role="group" aria-label="Origine des mots">
+        <button type="button" id="tab-random" aria-pressed="true">Tirage au sort</button>
+        <button type="button" id="tab-custom" aria-pressed="false">Mots choisis</button>
+      </div>
+
+      <div id="theme-zone">
+        <div class="modes" id="modes" role="group" aria-label="Mode de tirage">
+          <button type="button" data-mode="theme" aria-pressed="true"><b>Mots et thèmes</b><span>Tout public, jeux vidéo, football, rap français, cinéma.</span></button>
+          <button type="button" data-mode="solo" aria-pressed="false"><b>Un seul anime</b><span>Les deux personnages viennent de la même œuvre.</span></button>
+          <button type="button" data-mode="mix" aria-pressed="false"><b>Animes mélangés</b><span>Deux personnages qui se ressemblent, mais issus d'œuvres différentes.</span></button>
+        </div>
+        <div class="series" id="series" role="group" aria-label="Choix de la série"></div>
+        <p class="theme-note" id="theme-note"></p>
+      </div>
+
+      <div class="pair-inputs" id="pair-inputs" hidden>
+        <div>
+          <label class="field-label" for="word-civil">Mot des civils</label>
+          <input type="text" id="word-civil" placeholder="Chat" autocomplete="off" maxlength="28">
+        </div>
+        <div>
+          <label class="field-label" for="word-under">Mot des undercover</label>
+          <input type="text" id="word-under" placeholder="Chien" autocomplete="off" maxlength="28">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SALON EN LIGNE -->
+  <section id="screen-lobby" hidden>
+    <p class="eyebrow">Salon <b id="lobby-status">ouvert</b></p>
+    <div class="roomcode">
+      <p class="code" id="lobby-code">----</p>
+      <span class="hint">Communiquez ce code aux autres joueurs. Ils le saisissent sur l'écran d'accueil.</span>
+    </div>
+
+    <div class="block">
+      <h2>Joueurs connectés (<span id="lobby-count">0</span>)</h2>
+      <ul class="members" id="lobby-members"></ul>
+      <p class="toast" id="lobby-toast"></p>
+    </div>
+
+    <div id="config-slot-online"></div>
+
+    <p class="wait" id="lobby-wait" hidden>En attente que l'hôte lance la partie…</p>
+    <button class="btn" id="lobby-start" type="button" hidden>Distribuer les rôles</button>
+    <button class="btn-ghost" id="lobby-leave" type="button">Quitter le salon</button>
+  </section>
+
+  <!-- DISTRIBUTION LOCALE -->
+  <section id="screen-deal" hidden>
+    <p class="eyebrow">Remise <b><span id="deal-count">1 / 4</span></b></p>
+    <div class="handoff">
+      <p class="to">Passe le téléphone à</p>
+      <p class="name" id="deal-name">—</p>
+    </div>
+
+    <div class="card" id="card" role="button" tabindex="0" aria-label="Maintenir appuyé pour voir son mot">
+      <div class="card-face card-front">
+        <span class="seal">SCELLÉ</span>
+        <span class="hint">Maintenez le doigt appuyé pour lire. Tout disparaît dès que vous relâchez.</span>
+      </div>
+      <div class="card-face card-back" aria-live="polite">
+        <span class="emblem" id="card-emblem" aria-hidden="true"></span>
+        <span class="kicker" id="card-kicker">Votre mot</span>
+        <span class="word" id="card-word">—</span>
+        <span class="sub" id="card-sub"></span>
+      </div>
+    </div>
+
+    <p class="deal-note" id="deal-note">Personne d'autre ne doit regarder l'écran.</p>
+    <button class="btn" id="deal-next" type="button" disabled>Suivant</button>
+  </section>
+
+  <!-- MA CARTE (EN LIGNE) -->
+  <section id="screen-card" hidden>
+    <p class="eyebrow">Manche <b id="mycard-round">1</b> — votre carte</p>
+    <div class="handoff">
+      <p class="to">Joueur</p>
+      <p class="name" id="mycard-name">—</p>
+    </div>
+
+    <div class="card" id="mycard" role="button" tabindex="0" aria-label="Maintenir appuyé pour voir son mot">
+      <div class="card-face card-front">
+        <span class="seal">SCELLÉ</span>
+        <span class="hint">Maintenez le doigt appuyé pour lire. Tout disparaît dès que vous relâchez.</span>
+      </div>
+      <div class="card-face card-back" aria-live="polite">
+        <span class="emblem" id="mycard-emblem" aria-hidden="true"></span>
+        <span class="kicker" id="mycard-kicker">Votre mot</span>
+        <span class="word" id="mycard-word">—</span>
+        <span class="sub" id="mycard-sub"></span>
+      </div>
+    </div>
+
+    <p class="deal-note" id="mycard-status">Vous pourrez relire votre carte à tout moment pendant la partie.</p>
+    <button class="btn" id="mycard-ready" type="button" disabled>Je suis prêt</button>
+    <button class="btn-ghost" id="mycard-force" type="button" hidden>Commencer sans attendre</button>
+    <button class="btn-ghost" id="mycard-back" type="button" hidden>Retour à la partie</button>
+  </section>
+
+  <!-- PARTIE -->
+  <section id="screen-play" hidden>
+    <p class="eyebrow">Tour <b id="play-round">1</b> · <span id="play-phase">Description</span></p>
+    <h1 class="small" id="play-title">Description</h1>
+
+    <div class="block accent" id="describe-panel" hidden>
+      <div class="turn">
+        <p class="to">Au tour de</p>
+        <p class="name" id="turn-name">—</p>
+      </div>
+      <div class="timer" id="timer" hidden>
+        <div class="timer-bar"><i id="timer-fill"></i></div>
+        <div class="timer-text" id="timer-text"></div>
+      </div>
+      <div id="describe-form">
+        <p class="note">Un mot ou une courte phrase qui décrit votre mot secret, sans le prononcer.</p>
+        <div class="row">
+          <div class="grow"><input type="text" id="describe-input" placeholder="Votre indice" autocomplete="off" maxlength="80" enterkeyhint="send"></div>
+          <button class="btn-mini" id="describe-submit" type="button">Valider</button>
+        </div>
+      </div>
+      <p class="wait" id="describe-wait" hidden></p>
+      <button class="btn-ghost" id="describe-skip" type="button">Passer son tour</button>
+      <p class="toast" id="play-toast"></p>
+    </div>
+
+    <div class="block accent" id="vote-panel" hidden>
+      <h2>Vote</h2>
+      <p class="note" id="vote-info"></p>
+      <div id="vote-handoff" hidden>
+        <div class="handoff">
+          <p class="to">Passe le téléphone à</p>
+          <p class="name" id="vote-handoff-name">—</p>
+        </div>
+        <button class="btn" id="vote-unlock" type="button">C'est moi, je vote</button>
+      </div>
+      <p class="note" id="vote-caption" hidden></p>
+      <div class="people" id="vote-grid"></div>
+      <div id="vote-confirm"></div>
+      <p class="vote-status" id="vote-status"></p>
+      <button class="btn-ghost" id="vote-close" type="button" hidden>Clore le vote maintenant</button>
+    </div>
+
+    <div class="block accent" id="guess-panel" hidden>
+      <h2>Mr White tente sa chance</h2>
+      <p class="note" id="guess-info">Un seul essai pour nommer le mot des civils.</p>
+      <div id="guess-form">
+        <div class="row">
+          <div class="grow"><input type="text" id="guess-input" placeholder="Le mot des civils" autocomplete="off" maxlength="40" enterkeyhint="send"></div>
+          <button class="btn-mini" id="guess-submit" type="button">Valider</button>
+        </div>
+      </div>
+      <p class="wait" id="guess-wait" hidden></p>
+      <button class="btn-ghost" id="guess-skip" type="button">Il passe son tour</button>
+    </div>
+
+    <div class="block accent" id="reveal-panel" hidden>
+      <h2>Résultat du vote</h2>
+      <ul class="result-list" id="tally"></ul>
+      <div class="verdict" id="verdict"></div>
+      <button class="btn" id="continue" type="button" style="margin-top:12px">Manche suivante</button>
+      <p class="wait" id="continue-wait" hidden>En attente de l'hôte…</p>
+    </div>
+
+    <div class="block">
+      <h2>Ordre de parole</h2>
+      <ol class="order" id="order"></ol>
+    </div>
+
+    <div class="block">
+      <h2>Historique des descriptions</h2>
+      <ul class="history" id="history"></ul>
+      <p class="empty" id="history-empty">Aucune description pour le moment.</p>
+    </div>
+
+    <div class="block" id="manage-panel">
+      <h2>Gestion</h2>
+      <button class="btn-ghost" id="show-card" type="button" hidden style="margin-top:0">Relire ma carte</button>
+      <button class="btn-ghost" id="open-remove" type="button">Un joueur quitte la partie</button>
+      <div id="remove-slot"></div>
+      <button class="btn-ghost" id="leave-game" type="button" hidden>Quitter la partie</button>
+      <button class="btn-ghost" id="reveal-all" type="button">Arrêter et tout révéler</button>
+    </div>
+  </section>
+
+  <!-- FIN -->
+  <section id="screen-end" hidden>
+    <p class="eyebrow">Dossier <b>déclassifié</b></p>
+    <div class="banner" id="end-banner">
+      <p class="eyebrow" style="margin:0">Victoire</p>
+      <p class="who" id="end-who">—</p>
+      <p class="why" id="end-why">—</p>
+    </div>
+    <div class="block">
+      <h2>Rôles</h2>
+      <ul class="result-list" id="end-list"></ul>
+    </div>
+    <div class="block">
+      <h2>Descriptions de la partie</h2>
+      <ul class="history" id="end-history"></ul>
+    </div>
+    <div class="block">
+      <h2>Classement — manche <span id="manche-no">1</span></h2>
+      <ul class="result-list" id="score-list"></ul>
+      <p class="theme-note" id="score-rule"></p>
+      <button class="btn-ghost" id="reset-scores" type="button">Remettre les scores à zéro</button>
+    </div>
+    <p class="wait" id="end-wait" hidden>En attente de l'hôte…</p>
+    <button class="btn" id="replay" type="button">Rejouer avec les mêmes joueurs</button>
+    <button class="btn-ghost" id="restart" type="button">Changer les joueurs</button>
+    <button class="btn-ghost" id="end-home" type="button">Retour à l'accueil</button>
+  </section>
+
+  <!-- PARAMÈTRES -->
+  <section id="screen-settings" hidden>
+    <p class="eyebrow">Réglages</p>
+    <h1 class="small">Paramètres</h1>
+
+    <div class="block">
+      <h2>Apparence</h2>
+      <div class="tabs" role="group" aria-label="Thème visuel">
+        <button type="button" data-appearance="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-appearance="dark" aria-pressed="false">Sombre</button>
+        <button type="button" data-appearance="light" aria-pressed="false">Jour</button>
+      </div>
+      <p class="theme-note">Le mode automatique suit le réglage de votre téléphone.</p>
+    </div>
+
+    <div class="block">
+      <h2>Règles</h2>
+      <div id="rules-list"></div>
+    </div>
+
+    <div class="block">
+      <h2>Barème de points</h2>
+      <div id="points-list"></div>
+      <button class="btn-ghost" id="rules-reset" type="button">Rétablir les valeurs par défaut</button>
+    </div>
+
+    <div class="block">
+      <h2>Comment jouer</h2>
+      <p class="lede tight">La majorité des joueurs, les civils, partagent le même mot. Les undercover en reçoivent un autre, proche mais différent, sans savoir qu'ils sont les intrus. Mr White, lui, ne reçoit rien du tout.</p>
+      <p class="lede tight">Dans l'ordre de parole affiché, chacun donne un mot ou une courte phrase décrivant ce qu'il a reçu. Trop précis, il aide les intrus ; trop vague, il devient suspect.</p>
+      <p class="lede tight">Après le tour de table, chacun vote pour éliminer un suspect. En cas d'égalité, un second vote départage les ex æquo ; s'il reste une égalité, personne n'est éliminé. Le rôle de l'éliminé est révélé. Si c'est Mr White, il tente de deviner le mot des civils : s'il réussit, les intrus gagnent aussitôt.</p>
+      <p class="lede" style="margin:0">Les civils l'emportent quand tous les intrus ont été démasqués. Les intrus l'emportent quand ils atteignent le nombre de civils encore en jeu.</p>
+    </div>
+
+    <button class="btn" id="settings-back" type="button">Retour</button>
+  </section>
+
+  <!-- ÉDITEUR -->
+  <section id="screen-editor" hidden>
+    <p class="eyebrow">Base de <b>duos</b></p>
+    <h1 class="small">Éditeur</h1>
+    <p class="lede">Les ajouts sont conservés sur cet appareil et utilisables immédiatement. Pour les partager, exportez le code et collez-le dans js/words.js.</p>
+
+    <div class="block">
+      <h2>Destination</h2>
+      <div class="tabs" role="group" aria-label="Destination du duo">
+        <button type="button" data-dest="theme" aria-pressed="true">Thème</button>
+        <button type="button" data-dest="serie" aria-pressed="false">Série</button>
+        <button type="button" data-dest="cross" aria-pressed="false">Croisé</button>
+      </div>
+      <div class="stack" id="dest-fields" style="margin-top:12px"></div>
+    </div>
+
+    <div class="block">
+      <h2>Nouveau duo</h2>
+      <div class="stack">
+        <div>
+          <label class="field-label" for="ed-a">Premier mot</label>
+          <input type="text" id="ed-a" autocomplete="off" maxlength="32">
+        </div>
+        <div>
+          <label class="field-label" for="ed-b">Second mot</label>
+          <input type="text" id="ed-b" autocomplete="off" maxlength="32">
+        </div>
+      </div>
+      <p class="toast" id="ed-toast"></p>
+      <button class="btn" id="ed-add" type="button">Ajouter le duo</button>
+    </div>
+
+    <div class="block">
+      <h2>Ajouts conservés (<span id="ed-count">0</span>)</h2>
+      <ul class="result-list" id="ed-list"></ul>
+      <p class="empty" id="ed-empty">Aucun ajout pour le moment.</p>
+      <button class="btn-ghost" id="ed-export" type="button">Générer le code à copier</button>
+      <textarea id="ed-out" readonly hidden aria-label="Code à copier"></textarea>
+      <button class="btn-ghost" id="ed-copy" type="button" hidden>Copier dans le presse-papier</button>
+    </div>
+
+    <button class="btn" id="ed-back" type="button">Retour</button>
+  </section>
+
+</div>
+<div id="snack" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="js/words.js"></script>
+<script src="js/wordbank.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/local.js"></script>
+<script src="js/online.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
