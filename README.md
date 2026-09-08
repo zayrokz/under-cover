@@ -27,6 +27,24 @@ Le dépôt contient un `package.json` dont le script `start` lance `tools/serve.
 
 Aucune variable d'environnement n'est nécessaire : le mode en ligne repose sur Firebase, lu directement par le navigateur via `firebase-config.js`. La clé `apiKey` Firebase n'est pas un secret : elle identifie le projet, et ce sont les règles de `database.rules.json` qui protègent les données. Elle peut donc être commise dans le dépôt.
 
+### Déployer sur Firebase Hosting (recommandé)
+
+Le dépôt contient déjà `firebase.json` et `.firebaserc` (projet `under-cover-fcdc6`). Seuls les 11 fichiers du site sont envoyés : `index.html`, `firebase-config.js`, `css/` et `js/`.
+
+```bash
+npx firebase-tools login
+```
+
+```bash
+npx firebase-tools deploy --only hosting
+```
+
+Le site sort sur `https://under-cover-fcdc6.web.app`, domaine déjà autorisé par défaut dans Authentication, donc rien à configurer côté connexion anonyme.
+
+`firebase deploy` sans `--only hosting` publie **aussi** les règles de `database.rules.json`. Utile pour versionner les règles, mais cela écrase ce qui est dans la console : ne le faites que si le fichier du dépôt est bien la version de référence.
+
+Comparé à Render : pas de mise en veille (donc pas d'attente de 30 à 60 secondes au premier chargement), diffusion par CDN, même console que la base. En contrepartie, le déploiement n'est pas automatique à chaque `git push` ; `npx firebase-tools init hosting:github` met en place une action GitHub qui s'en charge.
+
 ### Faut-il MongoDB ?
 
 Non. Toutes les données de jeu (salons, joueurs, parties, scores, historique) sont stockées dans la Realtime Database de Firebase, qui sert aussi de canal temps réel entre les téléphones. Un serveur Node ne fait ici que distribuer les fichiers statiques. Une base MongoDB ne serait utile que si le mode en ligne était réécrit autour d'un serveur Socket.io, ce qui n'est pas le cas.
