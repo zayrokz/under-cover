@@ -43,6 +43,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .page{max-width:600px;margin:0 auto;padding:20px 16px calc(40px + env(safe-area-inset-bottom));}
 .page.narrow{max-width:460px;}
 .col-main,.col-side{min-width:0;}
+.btn + .btn{margin-top:10px;}
+/* sur une colonne, un espace net entre la zone d'action et les réglages ou listes qui suivent */
+@media (max-width:959px){
+  .page.split .col-main + .col-side{margin-top:24px;padding-top:24px;border-top:1px solid var(--border);}
+  .col-main > .btn:last-child{margin-bottom:4px;}
+}
 @media (min-width:960px){
   .page{padding:32px 24px 60px;}
   .page.split{max-width:1120px;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:28px;align-items:start;}

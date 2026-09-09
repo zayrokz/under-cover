@@ -22,7 +22,7 @@
   var meta = null, members = {}, game = null, priv = null, scores = {};
   var full = null, fullLoaded = false, isHost = false, offset = 0;
   var subs = [], hostSubs = [], tickHandle = null, hostWatch = null, pending = [];
-  var showingCard = false, cardOpen = false, connectedRef = null, connectedCb = null;
+  var showingCard = false, cardOpen = false, connectedRef = null, connectedCb = null, leaving = false;
 
   function available(){
     return typeof firebase !== "undefined" && !!global.FIREBASE_CONFIG &&
@@ -92,6 +92,14 @@
       return roomRef.child("members/" + uid).once("value");
     }).then(function(snap){
       var existing = snap.val();
+      /* Même compte déjà connecté depuis un autre onglet : deux onglets d'un même navigateur partagent
+         le même joueur anonyme et se marcheraient dessus (double hôte, état écrasé). */
+      var tabKey = "undercover.tab." + c, mine = false;
+      try { mine = sessionStorage.getItem(tabKey) === "1"; } catch(e){}
+      if (existing && existing.connected === true && !mine){
+        throw new Error("Ce navigateur est déjà dans le salon " + c + " (autre onglet). Pour tester seul, ouvrez chaque joueur dans une fenêtre de navigation privée ou un autre navigateur. Si l'onglet est fermé, réessayez dans une minute.");
+      }
+      try { sessionStorage.setItem(tabKey, "1"); } catch(e){}
       return roomRef.child("members/" + uid).update({
         name:name, joinedAt: existing && existing.joinedAt ? existing.joinedAt : now(),
         connected:true, lastSeen: firebase.database.ServerValue.TIMESTAMP
@@ -143,13 +151,13 @@
     stopHosting();
     clearTimeout(hostWatch); hostWatch = null;
     meta = null; members = {}; game = null; priv = null; scores = {}; code = null; roomRef = null;
-    showingCard = false; pending = [];
+    showingCard = false; pending = []; leaving = false;
     if (clearStore) Store.remove("online");
   }
 
   function onMeta(){
     if (!meta){
-      if (code){ UI.snack("Le salon a été fermé."); teardown(true); App.goHome(); }
+      if (code && !leaving){ UI.snack("Le salon a été fermé."); teardown(true); App.goHome(); }
       return;
     }
     var nowHost = meta.hostId === uid;
@@ -172,27 +180,40 @@
       if (h2 && h2.connected !== false) return;
       var cands = connectedMembers();
       if (cands[0] !== uid) return;
+      /* applyLocally = false : on ne devient hôte qu'une fois la passation confirmée par le serveur,
+         sinon la lecture de l'état complet est tentée avant que les règles ne l'autorisent. */
       roomRef.child("meta").transaction(function(m){
         if (!m || m.hostId === uid) return;
         var hm = members[m.hostId];
         if (hm && hm.connected !== false) return;
         m.hostId = uid;
         return m;
-      }).then(function(r){ if (r.committed) UI.snack("L'hôte s'est déconnecté : vous reprenez la main."); })
-        .catch(function(e){ console.warn(e); });
+      }, function(err, committed){ if (committed) UI.snack("L'hôte s'est déconnecté : vous reprenez la main."); if (err) console.warn(err); }, false);
     }, 5000);
   }
 
   /* ---------- rôle d'hôte ---------- */
-  function startHosting(){
-    isHost = true; fullLoaded = false; full = null;
-    Engine.clock = now;
+  /* Lecture de l'état complet avec nouvelles tentatives : juste après une passation d'hôte,
+     les règles peuvent refuser la première lecture pendant quelques centaines de millisecondes. */
+  function loadFull(attempt){
+    if (!isHost || !roomRef) return;
     roomRef.child("full").once("value").then(function(s){
+      if (!isHost) return;
       full = s.val() ? Engine.normalize(s.val()) : null;
       fullLoaded = true;
       flush();
       render();
-    }).catch(function(e){ console.warn("Lecture de l'état complet refusée", e); fullLoaded = true; });
+    }).catch(function(e){
+      if (!isHost) return;
+      if (attempt < 8){ setTimeout(function(){ loadFull(attempt + 1); }, 400 * (attempt + 1)); return; }
+      console.warn("Lecture de l'état complet refusée", e);
+      UI.snack("Impossible de reprendre la partie en tant qu'hôte : rechargez la page.", 4000);
+    });
+  }
+  function startHosting(){
+    isHost = true; fullLoaded = false; full = null;
+    Engine.clock = now;
+    loadFull(0);
     var aref = roomRef.child("actions");
     var acb = function(s){ var a = s.val(); if (a) pending.push({ key:s.key, a:a }); flush(); };
     aref.on("child_added", acb);
@@ -210,6 +231,8 @@
   }
   function flush(){
     if (!isHost || !fullLoaded || !roomRef) return;
+    /* partie en cours mais état complet absent : on garde les actions en attente plutôt que de les perdre */
+    if (!full && meta && meta.status === "playing") return;
     if (!pending.length) return;
     while (pending.length){
       var x = pending.shift();
@@ -323,6 +346,7 @@
 
   function leave(){
     if (!roomRef){ App.goHome(); return; }
+    leaving = true;
     var me = roomRef.child("members/" + uid);
     var chain = Promise.resolve();
     if (isHost){
@@ -332,9 +356,16 @@
     } else if (game && game.phase !== "end" && Engine.player(game, uid)){
       chain = roomRef.child("actions").push({ from:uid, type:"leave", at:now() });
     }
+    /* dernier connecté et hôte : le salon est supprimé pour ne rien laisser traîner dans la base */
+    var others = connectedMembers().filter(function(id){ return id !== uid; });
+    var wipe = isHost && others.length === 0;
+    var memberIds = Object.keys(members);
     chain.catch(function(){}).then(function(){
       me.onDisconnect().cancel();
-      return me.remove();
+      if (!wipe) return me.remove();
+      var updates = { game:null, full:null, actions:null, scores:null, history:null };
+      memberIds.forEach(function(id){ updates["private/" + id] = null; updates["members/" + id] = null; });
+      return roomRef.update(updates).then(function(){ return roomRef.child("meta").remove(); });
     }).catch(function(){}).then(function(){
       teardown(true);
       App.goHome();
